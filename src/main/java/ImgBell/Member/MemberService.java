@@ -40,8 +40,6 @@ public class MemberService {
             member.addRole("ROLE_SUPERADMIN");
             member.addRole("ROLE_ADMIN");
         }
-
-
         // 사용자 저장
         return memberRepository.save(member);
     }

@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import javax.management.relation.Role;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 
@@ -26,7 +27,7 @@ public class Member {
     @Column(unique = true, nullable = false, updatable = false)
     private String username;
 
-    @Column(unique = true, nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private String name;
 
     @Column(nullable = false)
@@ -43,7 +44,11 @@ public class Member {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private String sex;
+    private Integer age;
+
     private String phone;
+
     private String profileImage;
     private String country;
     private String mainAddress;

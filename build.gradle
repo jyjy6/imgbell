@@ -38,6 +38,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.1.1'
 
 
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
