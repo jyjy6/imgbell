@@ -3,6 +3,7 @@ package ImgBell.Image;
 import ImgBell.Member.MemberDto;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,21 +39,25 @@ public class ImageController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> registerFiles(@RequestBody List<Image> images) {
-        // DB에 파일 정보 저장
-        imageService.saveFileInfoToDb(images);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> registerFiles(@RequestBody List<ImageRequestDto> images) {
+        try {
+            // DB에 파일 정보 저장
+            System.out.println("이미지 업로드");
+            imageService.saveFileInfoToDb(images);
+            return new ResponseEntity<>("Added", HttpStatus.CREATED);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
     }
-}
 
 
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    class PresignedUrlResponse {
+        private String presignedUrl;
+        private String imageUrl;
 
-@Getter
-@Setter
-@AllArgsConstructor
-class PresignedUrlResponse {
-    private String presignedUrl;
-    private String imageUrl;
-
-    // 생성자, getter, setter
+        // 생성자, getter, setter
+    }
 }

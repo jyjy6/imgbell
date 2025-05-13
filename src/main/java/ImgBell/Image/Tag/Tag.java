@@ -2,11 +2,19 @@ package ImgBell.Image.Tag;
 
 import ImgBell.Image.Image;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
 
+@Setter
+@Getter
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
 public class Tag {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,5 +36,10 @@ public class Tag {
     // 이미지와의 관계 (다대다)
     @ManyToMany(mappedBy = "tags")
     private Set<Image> images = new HashSet<>();
+
+
+    public Tag(String name) {
+        this.name = name;
+    }
 
 }

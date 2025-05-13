@@ -1,5 +1,9 @@
 package ImgBell.Image;
 
+import ImgBell.Image.Tag.Tag;
+import ImgBell.Image.Tag.TagDto;
+import ImgBell.Image.Tag.TagRepository;
+import ImgBell.Image.Tag.TagService;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import jakarta.transaction.Transactional;
@@ -12,13 +16,17 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ImageService {
     private final ImageRepository imageRepository;
     private final MemberRepository memberRepository;
+    private final TagRepository tagRepository;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -41,22 +49,50 @@ public class ImageService {
 
 
     @Transactional
-    public void saveFileInfoToDb(List<Image> images) {
-        for (Image image : images) {
+    public void saveFileInfoToDb(List<ImageRequestDto> imageDtos) {
+        for (ImageRequestDto dto : imageDtos) {
             try {
-                if(!image.getUploaderName().equals("GUEST")){
-                    Member uploader = memberRepository.findByUsername(image.getImageName())
-                            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + image.getUploaderName()));
+                Image image = Image.builder()
+                        .imageUrl(dto.getImageUrl())
+                        .imageName(dto.getImageName())
+                        .source(dto.getSource())
+                        .artist(dto.getArtist())
+                        .fileSize(dto.getFileSize())
+                        .fileType(dto.getFileType())
+                        .imageGrade(dto.getImageGrade())
+                        .isPublic(dto.getIsPublic())
+                        .uploaderName(dto.getUploaderName())
+                        .build();
+
+                // uploader 설정
+                if (!"GUEST".equals(dto.getUploaderName())) {
+                    Member uploader = memberRepository.findByUsername(dto.getUploaderName())
+                            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + dto.getUploaderName()));
                     image.setUploader(uploader);
                 }
-                imageRepository.save(image);
 
-            } catch (Exception e){
-                System.out.println("이미지 저장 오류남");
-                e.getMessage();
+
+                Set<Tag> tagEntities = new HashSet<>();
+                for (TagDto tagDto : dto.getTags()) {
+                    Tag tag = tagRepository.findByName(tagDto.getName())
+                            .orElseGet(() -> {
+                                Tag newTag = new Tag(tagDto.getName());
+                                newTag.setDescription(tagDto.getDescription());
+                                newTag.setCategory(tagDto.getCategory());
+                                return tagRepository.save(newTag);
+                            });
+                    tag.setUsageCount(tag.getUsageCount() + 1);
+                    tagEntities.add(tag);
+                }
+                image.setTags(tagEntities);
+
+                imageRepository.save(image);
+            } catch (Exception e) {
+                System.out.println("이미지 저장 오류남: " + e.getMessage());
             }
         }
     }
+
 
     /**
      * URL에서 파일 타입 추출

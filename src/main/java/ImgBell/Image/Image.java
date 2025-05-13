@@ -51,8 +51,15 @@ public class Image {
     private Integer likeCount = 0;
     private Integer downloadCount = 0;
 
-    // 컨텐츠 관리
-    private String isAdult = "false";  // 성인물 여부
+
+    public enum ImageGrade {
+        GENERAL,
+        ADULT,
+        EXTREME
+    }
+
+    @Enumerated(EnumType.STRING)
+    private ImageGrade imageGrade = ImageGrade.GENERAL;
     private Boolean isPublic = true;  // 공개 여부
     private Boolean isApproved = false;  // 관리자 승인 여부
 
@@ -89,3 +96,4 @@ public class Image {
         tags.remove(tag);
     }
 }
+
