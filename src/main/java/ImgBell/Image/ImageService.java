@@ -62,6 +62,9 @@ public class ImageService {
                         .imageGrade(dto.getImageGrade())
                         .isPublic(dto.getIsPublic())
                         .uploaderName(dto.getUploaderName())
+                        .likeCount(0)
+                        .downloadCount(0)
+                        .viewCount(0)
                         .build();
 
                 // uploader 설정
