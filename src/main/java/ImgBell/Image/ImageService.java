@@ -1,25 +1,29 @@
 package ImgBell.Image;
 
+import ImgBell.Image.Comment.Comment;
+import ImgBell.Image.Comment.CommentDto;
 import ImgBell.Image.Tag.Tag;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
-import ImgBell.Image.Tag.TagService;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,8 +53,8 @@ public class ImageService {
 
 
     @Transactional
-    public void saveFileInfoToDb(List<ImageRequestDto> imageDtos) {
-        for (ImageRequestDto dto : imageDtos) {
+    public void saveFileInfoToDb(List<ImageDto> imageDtos) {
+        for (ImageDto dto : imageDtos) {
             try {
                 Image image = Image.builder()
                         .imageUrl(dto.getImageUrl())
@@ -115,5 +119,114 @@ public class ImageService {
         // 기본값
         return "other";
     }
+
+
+    @Transactional
+    public Page<ImageDto> getImageList(Pageable pageable, String tag, String grade) {
+        // 실제 구현에서는 필터링 조건에 따라 쿼리를 다르게 생성해야 함
+        Page<Image> images;
+
+        if (tag != null && !tag.isEmpty()) {
+            // 태그로 필터링하는 로직
+            images = imageRepository.findByTagName(tag, pageable);
+        } else if (grade != null && !grade.isEmpty()) {
+            // 등급으로 필터링하는 로직
+            images = imageRepository.findByImageGrade(Image.ImageGrade.valueOf(grade), pageable);
+        } else {
+            // 기본 조회
+            images = imageRepository.findAllByIsPublicTrue(pageable);
+        }
+
+        System.out.println("이미지목록:");
+        System.out.println(images);
+
+        // Entity -> DTO 변환
+        return images.map(this::convertToLightDto);
+    }
+
+    @Transactional
+    public Page<ImageDto> getPopularImages(Pageable pageable) {
+        Page<Image> images = imageRepository.findTop10ByOrderByViewCountDesc(pageable);
+        return images.map(this::convertToLightDto);
+    }
+
+    /**
+     * 단일 이미지 상세 정보를 조회하는 메서드
+     */
+    @Transactional
+    public ImageDto getImageDetail(Long id) {
+        Image image = imageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+        // 조회수 증가
+        image.setViewCount(image.getViewCount()+1);
+        imageRepository.save(image);
+
+        return convertToRequestDto(image);
+    }
+
+    /**
+     * Image Entity를 ImageResponseDto로 변환하는 메서드
+     */
+    private ImageDto convertToLightDto(Image image) {
+        return ImageDto.builder()
+                .id(image.getId())
+                .imageUrl(image.getImageUrl())
+                .imageName(image.getImageName())
+                .uploaderName(image.getUploader() != null ? image.getUploader().getUsername() : "Unknown")
+                .likeCount(image.getLikeCount())
+                .viewCount(image.getViewCount())
+                .imageGrade(image.getImageGrade())
+                .build();
+    }
+
+
+
+    private ImageDto convertToRequestDto(Image image) {
+        // 이 메서드는 상세 정보를 포함한 DTO로 변환
+        ImageDto dto = new ImageDto();
+        dto.setId(image.getId());
+        dto.setImageUrl(image.getImageUrl());
+        dto.setImageName(image.getImageName());
+        dto.setUploaderName(image.getUploader() != null ? image.getUploader().getUsername() : null);
+        dto.setUploader(image.getUploader());
+        dto.setFileType(image.getFileType());
+        dto.setFileSize(image.getFileSize());
+        List<TagDto> tagDtos = new ArrayList<>() {
+        };
+        for (Tag tag : image.getTags()) {
+            TagDto tagDto = new TagDto();
+            tagDto.setCategory(tag.getCategory());
+            tagDto.setDescription(tag.getDescription());
+            tagDto.setName(tag.getName());
+            tagDto.setUsageCount(tag.getUsageCount());
+            tagDtos.add(tagDto);
+        }
+        dto.setTags(tagDtos);
+        dto.setSource(image.getSource());
+        dto.setArtist(image.getArtist());
+        dto.setViewCount(image.getViewCount());
+        dto.setLikeCount(image.getLikeCount());
+        dto.setDownloadCount(image.getDownloadCount());
+        dto.setImageGrade(image.getImageGrade());
+        dto.setIsPublic(image.getIsPublic());
+        dto.setIsApproved(image.getIsApproved());
+        List<CommentDto> commentDtos = new ArrayList<>() {
+        };
+        for (Comment comment : image.getComments()) {
+            CommentDto commentDto = new CommentDto();
+            commentDto.setId(comment.getId());
+            commentDto.setMember(comment.getMember());
+            commentDto.setAuthorName(comment.getAuthorName());
+            commentDto.setImage(comment.getImage());
+            commentDto.setCreatedAt(comment.getCreatedAt());
+            commentDtos.add(commentDto);
+        }
+        dto.setComments(commentDtos);
+        return dto;
+    }
+
+
+
+
 
 }

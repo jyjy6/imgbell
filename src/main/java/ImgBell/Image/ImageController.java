@@ -1,8 +1,10 @@
 package ImgBell.Image;
 
-import ImgBell.Member.MemberDto;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +41,7 @@ public class ImageController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> registerFiles(@RequestBody List<ImageRequestDto> images) {
+    public ResponseEntity<?> registerFiles(@RequestBody List<ImageDto> images) {
         try {
             // DB에 파일 정보 저장
             System.out.println("이미지 업로드");
@@ -48,6 +50,34 @@ public class ImageController {
         } catch (RuntimeException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
+    }
+
+
+    @GetMapping("/list")
+    public ResponseEntity<Page<ImageDto>> getImageList(
+            @PageableDefault(size = 20, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String grade
+    ) {
+        return ResponseEntity.ok(imageService.getImageList(pageable, tag, grade));
+    }
+
+    /**
+     * 단일 이미지 상세 정보를 조회합니다.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(imageService.getImageDetail(id));
+    }
+
+    /**
+     * 인기 이미지 목록을 조회합니다.
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<Page<ImageDto>> getPopularImages(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(imageService.getPopularImages(pageable));
     }
 
 
@@ -60,4 +90,15 @@ public class ImageController {
 
         // 생성자, getter, setter
     }
+}
+
+
+@AllArgsConstructor
+@NoArgsConstructor
+class PageResponse<T> {
+    private List<T> content;
+    private int totalPages;
+    private long totalElements;
+    private int size;
+    private int number;
 }

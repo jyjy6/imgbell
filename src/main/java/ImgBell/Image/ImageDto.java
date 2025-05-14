@@ -1,19 +1,23 @@
 package ImgBell.Image;
 
 import ImgBell.Image.Comment.Comment;
-import ImgBell.Image.Tag.Tag;
+import ImgBell.Image.Comment.CommentDto;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Member.Member;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.util.List;
-import java.util.Set;
 
+//null필드 응답하지않게
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImageRequestDto {
+@Builder
+public class ImageDto {
+    private Long id;
     private String imageUrl;
     private String imageName;
     private String uploaderName;
@@ -29,7 +33,7 @@ public class ImageRequestDto {
     private Image.ImageGrade imageGrade;
     private Boolean isPublic = true;
     private Boolean isApproved;
-    private List<Comment> comments;
+    private List<CommentDto> comments;
 
 
 }
