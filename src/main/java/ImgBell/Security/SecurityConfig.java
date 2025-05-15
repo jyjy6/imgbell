@@ -26,9 +26,9 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
 
-    private final AuthenticationSuccessHandler loginSuccessHandler; // 로그인 성공 핸들러 (구현 필요)
+    private final AuthenticationSuccessHandler loginSuccessHandler;
 
-    private final AuthenticationFailureHandler loginFailureHandler; // 로그인 실패 핸들러 (구현 필요)
+    private final AuthenticationFailureHandler loginFailureHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -43,12 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/premium/**").hasRole("PREMIUM")
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
-                )
-                .rememberMe(remember -> remember
-                        .key("uniqueAndSecretKey")
-                        .tokenValiditySeconds(86400) // 1일
-                        .userDetailsService(userDetailsService)
-                );
+                ).authenticationProvider(authenticationProvider());
 
         return http.build();
     }

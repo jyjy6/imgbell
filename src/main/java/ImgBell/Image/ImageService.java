@@ -7,13 +7,14 @@ import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -121,32 +122,29 @@ public class ImageService {
     }
 
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Page<ImageDto> getImageList(Pageable pageable, String tag, String grade) {
-        // 실제 구현에서는 필터링 조건에 따라 쿼리를 다르게 생성해야 함
-        Page<Image> images;
+        Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
 
         if (tag != null && !tag.isEmpty()) {
-            // 태그로 필터링하는 로직
-            images = imageRepository.findByTagName(tag, pageable);
-        } else if (grade != null && !grade.isEmpty()) {
-            // 등급으로 필터링하는 로직
-            images = imageRepository.findByImageGrade(Image.ImageGrade.valueOf(grade), pageable);
-        } else {
-            // 기본 조회
-            images = imageRepository.findAllByIsPublicTrue(pageable);
+            spec = spec.and(ImageSpecification.hasTag(tag));
         }
+
+        if (grade != null && !grade.isEmpty()) {
+            spec = spec.and(ImageSpecification.hasGrade(grade));
+        }
+
+        Page<Image> images = imageRepository.findAll(spec, pageable);
 
         System.out.println("이미지목록:");
         System.out.println(images);
-
         // Entity -> DTO 변환
         return images.map(this::convertToLightDto);
     }
 
     @Transactional
     public Page<ImageDto> getPopularImages(Pageable pageable) {
-        Page<Image> images = imageRepository.findTop10ByOrderByViewCountDesc(pageable);
+        Page<Image> images = imageRepository.findAllByOrderByViewCountDesc(pageable);
         return images.map(this::convertToLightDto);
     }
 
@@ -155,19 +153,20 @@ public class ImageService {
      */
     @Transactional
     public ImageDto getImageDetail(Long id) {
-        Image image = imageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
-        // 조회수 증가
-        image.setViewCount(image.getViewCount()+1);
-        imageRepository.save(image);
-
-        return convertToRequestDto(image);
+            Image image = imageRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+            // 조회수 증가
+        System.out.println("디테일이미지");
+        System.out.println(image);
+            image.setViewCount(image.getViewCount()+1);
+            imageRepository.save(image);
+            return convertToRequestDto(image);
     }
 
     /**
      * Image Entity를 ImageResponseDto로 변환하는 메서드
      */
-    private ImageDto convertToLightDto(Image image) {
+    public ImageDto convertToLightDto(Image image) {
         return ImageDto.builder()
                 .id(image.getId())
                 .imageUrl(image.getImageUrl())
@@ -179,20 +178,17 @@ public class ImageService {
                 .build();
     }
 
-
-
-    private ImageDto convertToRequestDto(Image image) {
+    public ImageDto convertToRequestDto(Image image) {
         // 이 메서드는 상세 정보를 포함한 DTO로 변환
         ImageDto dto = new ImageDto();
         dto.setId(image.getId());
         dto.setImageUrl(image.getImageUrl());
         dto.setImageName(image.getImageName());
         dto.setUploaderName(image.getUploader() != null ? image.getUploader().getUsername() : null);
-        dto.setUploader(image.getUploader());
+//        dto.setUploader(image.getUploader());
         dto.setFileType(image.getFileType());
         dto.setFileSize(image.getFileSize());
-        List<TagDto> tagDtos = new ArrayList<>() {
-        };
+        List<TagDto> tagDtos = new ArrayList<>();
         for (Tag tag : image.getTags()) {
             TagDto tagDto = new TagDto();
             tagDto.setCategory(tag.getCategory());
@@ -210,8 +206,7 @@ public class ImageService {
         dto.setImageGrade(image.getImageGrade());
         dto.setIsPublic(image.getIsPublic());
         dto.setIsApproved(image.getIsApproved());
-        List<CommentDto> commentDtos = new ArrayList<>() {
-        };
+        List<CommentDto> commentDtos = new ArrayList<>();
         for (Comment comment : image.getComments()) {
             CommentDto commentDto = new CommentDto();
             commentDto.setId(comment.getId());
