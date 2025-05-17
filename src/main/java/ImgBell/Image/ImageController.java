@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,12 +56,18 @@ public class ImageController {
 
     @GetMapping("/list")
     public ResponseEntity<Page<ImageDto>> getImageList(
-            @PageableDefault(size = 20, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String imageName,
+            @RequestParam(required = false) String uploaderName,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String searchType,
             @RequestParam(required = false) String grade
     ) {
-        return ResponseEntity.ok(imageService.getImageList(pageable, tag, grade));
+
+        return ResponseEntity.ok(imageService.getImageList(pageable, tag, imageName, uploaderName, keyword, searchType, grade));
     }
+
 
     /**
      * 단일 이미지 상세 정보를 조회합니다.

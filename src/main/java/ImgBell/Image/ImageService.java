@@ -123,21 +123,54 @@ public class ImageService {
 
 
     @Transactional(readOnly = true)
-    public Page<ImageDto> getImageList(Pageable pageable, String tag, String grade) {
+    public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName,
+                                       String keyword, String searchType, String grade) {
         Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
 
-        if (tag != null && !tag.isEmpty()) {
-            spec = spec.and(ImageSpecification.hasTag(tag));
+        // 검색 타입에 따른 조건 적용
+        if (searchType != null) {
+            switch (searchType) {
+                case "all":
+                    if (keyword != null && !keyword.isEmpty()) {
+                        spec = spec.and(ImageSpecification.searchAll(keyword));
+                    }
+                    break;
+                case "tag":
+                    if (tag != null && !tag.isEmpty()) {
+                        spec = spec.and(ImageSpecification.hasTag(tag));
+                    }
+                    break;
+                case "imageName":
+                    if (imageName != null && !imageName.isEmpty()) {
+                        spec = spec.and(ImageSpecification.hasImageName(imageName));
+                    }
+                    break;
+                case "uploaderName":
+                    if (uploaderName != null && !uploaderName.isEmpty()) {
+                        spec = spec.and(ImageSpecification.hasUploaderName(uploaderName));
+                    }
+                    break;
+                default:
+                    // 기본적으로 태그 검색 적용
+                    if (tag != null && !tag.isEmpty()) {
+                        spec = spec.and(ImageSpecification.hasTag(tag));
+                    }
+            }
+        } else {
+            // 이전 방식과의 호환성 유지
+            if (tag != null && !tag.isEmpty()) {
+                spec = spec.and(ImageSpecification.hasTag(tag));
+            }
         }
 
+        // 등급 필터링
         if (grade != null && !grade.isEmpty()) {
             spec = spec.and(ImageSpecification.hasGrade(grade));
         }
 
         Page<Image> images = imageRepository.findAll(spec, pageable);
 
-        System.out.println("이미지목록:");
-        System.out.println(images);
+
         // Entity -> DTO 변환
         return images.map(this::convertToLightDto);
     }

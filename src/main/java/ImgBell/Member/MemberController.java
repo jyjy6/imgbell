@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,11 +53,17 @@ public class MemberController {
 
     @GetMapping("/userinfo")
     public ResponseEntity<?> getUserInfo(Authentication auth) {
+
         if (auth.getPrincipal() == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
         }
 
+        System.out.println(auth);
+
         var result = memberRepository.findByUsername(auth.getName());
+        if (result.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다");
+        }
         Member member = result.get();
 
         MemberDto userInfo = MemberDto.builder()

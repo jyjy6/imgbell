@@ -122,16 +122,16 @@ public class JWTUtil {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        String memberJson = "";
+        String userInfoJson = "";
         try {
-            memberJson = objectMapper.writeValueAsString(memberDto);
+            userInfoJson = objectMapper.writeValueAsString(memberDto);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Error while converting MemberDto to JSON", e);
         }
 
         return Jwts.builder()
                 .setSubject(member.getUsername())
-                .claim("userInfo", memberJson)
+                .claim("userInfo", userInfoJson)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 60000))
                 .signWith(key)

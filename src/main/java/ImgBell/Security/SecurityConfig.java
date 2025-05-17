@@ -1,8 +1,10 @@
 package ImgBell.Security;
 
 
+import ImgBell.Auth.JWT.JWTFilter;
 import ImgBell.Member.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,9 +18,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
-@EnableWebSecurity
+@EnableWebSecurity(debug = true)
 @EnableMethodSecurity(securedEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -29,6 +37,9 @@ public class SecurityConfig {
     private final AuthenticationSuccessHandler loginSuccessHandler;
 
     private final AuthenticationFailureHandler loginFailureHandler;
+
+    @Value("${allowed.origins}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -43,8 +54,8 @@ public class SecurityConfig {
                         .requestMatchers("/premium/**").hasRole("PREMIUM")
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
-                ).authenticationProvider(authenticationProvider());
-
+                ).addFilterBefore(new JWTFilter(allowedOrigins), UsernamePasswordAuthenticationFilter.class)
+                .authenticationProvider(authenticationProvider());
         return http.build();
     }
 
@@ -65,4 +76,18 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of(allowedOrigins)); // 프론트엔드 도메인
+        config.setAllowedMethods(List.of("*"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true); // 쿠키 허용
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config); // 모든 경로 적용
+        return source;
+    }
+
 }
