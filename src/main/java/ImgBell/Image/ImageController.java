@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLDecoder;
@@ -57,29 +58,37 @@ public class ImageController {
     @GetMapping("/list")
     public ResponseEntity<Page<ImageDto>> getImageList(
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication auth,
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String imageName,
             @RequestParam(required = false) String uploaderName,
+            @RequestParam(required = false) String artist,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String searchType,
-            @RequestParam(required = false) String grade
+            @RequestParam(required = false) String grade,
+            @RequestParam(required = false) Boolean myImageList
     ) {
 
-        return ResponseEntity.ok(imageService.getImageList(pageable, tag, imageName, uploaderName, keyword, searchType, grade));
+        // 로그인 유저의 업로드만 필터링
+        if (Boolean.TRUE.equals(myImageList) && auth != null && auth.isAuthenticated()) {
+            uploaderName = auth.getName();  // ✅ 현재 로그인된 유저 이름으로 덮어쓰기
+        }
+
+        return ResponseEntity.ok(imageService.getImageList(
+                pageable, tag, imageName, uploaderName, artist, keyword, searchType, grade
+        ));
     }
 
 
-    /**
-     * 단일 이미지 상세 정보를 조회합니다.
-     */
+
+
+
+//     * 단일 이미지 상세 정보를 조회합니다.
     @GetMapping("/{id}")
     public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id) {
         return ResponseEntity.ok(imageService.getImageDetail(id));
     }
 
-    /**
-     * 인기 이미지 목록을 조회합니다.
-     */
     @GetMapping("/popular")
     public ResponseEntity<Page<ImageDto>> getPopularImages(
             @PageableDefault(size = 10) Pageable pageable
@@ -99,7 +108,7 @@ public class ImageController {
     }
 }
 
-
+//페이지네이션할때 뭐 권장되는 방식이라곤 하는데 필요없음 딱히
 @AllArgsConstructor
 @NoArgsConstructor
 class PageResponse<T> {

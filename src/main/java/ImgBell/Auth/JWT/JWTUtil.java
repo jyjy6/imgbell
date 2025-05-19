@@ -3,7 +3,7 @@ package ImgBell.Auth.JWT;
 import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.CustomUserDetailsService;
 import ImgBell.Member.Member;
-import ImgBell.Member.MemberDto;
+import ImgBell.Member.Dto.MemberDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -21,7 +21,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
@@ -57,17 +56,12 @@ public class JWTUtil {
                 .email(member.getEmail())
                 .phone(member.getPhone())
                 .createdAt(member.getCreatedAt())
-                .updatedAt(null) // 필요 시 업데이트 시간 필드 추가
+                .roleSet(roleSet)
                 .profileImage(member.getProfileImage())
-                .country(member.getCountry())
                 .mainAddress(member.getMainAddress())
                 .subAddress(member.getSubAddress())
-                .isPremium(member.isPremium())
-                .premiumExpiryDate(member.getPremiumExpiryDate())
-                .marketingAccepted(member.isMarketingAccepted())
-                .roleSet(roleSet)
+                .country(member.getCountry())
                 .build();
-
 
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -90,20 +84,16 @@ public class JWTUtil {
     }
 
     //    jwt재발급 해주는함수 메소드 오버라이딩 -> AccessToken이 만료되면 Authentication auth는 무효가 되기때문에 username
-    public static String createAccessToken(String username, CustomUserDetailsService userDetailsService) {
+    public static String createAccessToken(String username, Set<String> authorities, Long memberId /* 필요한 다른 정보들 */) {
         // username으로 사용자 정보를 로드
-        CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(username);
-
-
-        // 사용자 정보를 기반으로 Authentication 객체 생성 (패스워드는 null로 설정)
-        Authentication auth = new UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities());
 
         // 이제 기존의 createAccessToken(Authentication auth) 로직을 재사용할 수 있음
         CustomUserDetails customUserDetails = (CustomUserDetails) auth.getPrincipal();
         Member member = customUserDetails.getMember();
-        String authorities = auth.getAuthorities().stream()
-                .map(a -> a.getAuthority()).collect(Collectors.joining(","));
+
+        Set<String> roleSet = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
 
         MemberDto memberDto = MemberDto.builder()
                 .id(member.getId())
@@ -112,7 +102,7 @@ public class JWTUtil {
                 .email(member.getEmail())
                 .phone(member.getPhone())
                 .createdAt(member.getCreatedAt())
-                .roleSet(Collections.singleton(authorities))
+                .roleSet(roleSet)
                 .profileImage(member.getProfileImage())
                 .mainAddress(member.getMainAddress())
                 .subAddress(member.getSubAddress())

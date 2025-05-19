@@ -54,6 +54,17 @@ public class ImageSpecification {
         };
     }
 
+    public static Specification<Image> hasArtist(String artist) {
+        return (root, query, cb) -> {
+            if (artist == null || artist.isEmpty()) {
+                return null;
+            }
+            // Image 엔티티의 artist 필드 직접 사용
+            return cb.like(cb.lower(root.get("artist")), "%" + artist.toLowerCase() + "%");
+        };
+    }
+
+
 
 
     public static Specification<Image> searchAll(String keyword) {
@@ -77,6 +88,12 @@ public class ImageSpecification {
                     lowercaseKeyword
             );
 
+            // 아티스트 검색 - Image엔티티의 artist 필드 사용
+            Predicate artistPredicate = cb.like(
+                    cb.lower(root.get("artist")),
+                    lowercaseKeyword
+            );
+
             // 태그 검색
             Join<Image, Tag> tagJoin = root.join("tags", JoinType.LEFT);
             Predicate tagPredicate = cb.like(
@@ -84,10 +101,11 @@ public class ImageSpecification {
                     lowercaseKeyword
             );
 
-            // OR 조건으로 세 조건 결합
+            // OR 조건으로 4개의 조건 결합
             return cb.or(
                     imageNamePredicate,
                     uploaderNamePredicate,
+                    artistPredicate,
                     tagPredicate
             );
         };

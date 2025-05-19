@@ -123,7 +123,7 @@ public class ImageService {
 
 
     @Transactional(readOnly = true)
-    public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName,
+    public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName, String artist,
                                        String keyword, String searchType, String grade) {
         Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
 
@@ -148,6 +148,11 @@ public class ImageService {
                 case "uploaderName":
                     if (uploaderName != null && !uploaderName.isEmpty()) {
                         spec = spec.and(ImageSpecification.hasUploaderName(uploaderName));
+                    }
+                    break;
+                case "artist":
+                    if (artist != null && !artist.isEmpty()) {
+                        spec = spec.and(ImageSpecification.hasArtist(artist));
                     }
                     break;
                 default:

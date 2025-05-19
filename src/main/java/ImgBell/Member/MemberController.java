@@ -1,12 +1,13 @@
 package ImgBell.Member;
 
 
+import ImgBell.Member.Dto.MemberDto;
+import ImgBell.Member.Dto.MemberFormDto;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,10 +23,11 @@ public class MemberController {
     private final PasswordEncoder passwordEncoder;
 
 
+
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody Member member) {
+    public ResponseEntity<String> registerUser(@RequestBody MemberFormDto memberFormDto) {
         try {
-            memberService.registerUser(member);
+            memberService.registerUser(memberFormDto);
             return new ResponseEntity<>("User registered successfully", HttpStatus.CREATED);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
@@ -33,10 +35,10 @@ public class MemberController {
     }
 
     @PutMapping("/modify")
-    public ResponseEntity<MemberDto> editUser(@RequestBody Member member, Authentication auth) {
+    public ResponseEntity<MemberDto> editUser(@RequestBody MemberFormDto memberDto, Authentication auth) {
         try {
             System.out.println("인증정보" + auth);
-            MemberDto updatedUser = memberService.editUser(member, auth);
+            MemberDto updatedUser = memberService.editUser(memberDto, auth);
             return new ResponseEntity<>(updatedUser, HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
@@ -58,31 +60,13 @@ public class MemberController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
         }
 
-        System.out.println(auth);
-
         var result = memberRepository.findByUsername(auth.getName());
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다");
         }
         Member member = result.get();
-
-        MemberDto userInfo = MemberDto.builder()
-                .id(member.getId())
-                .username(member.getUsername())
-                .displayName(member.getDisplayName())
-                .email(member.getEmail())
-                .phone(member.getPhone())
-                .createdAt(member.getCreatedAt())
-                .updatedAt(member.getUpdatedAt())
-                .profileImage(member.getProfileImage())
-                .country(member.getCountry())
-                .mainAddress(member.getMainAddress())
-                .subAddress(member.getSubAddress())
-                .isPremium(member.isPremium())
-                .premiumExpiryDate(member.getPremiumExpiryDate())
-                .marketingAccepted(member.isMarketingAccepted())
-                .roleSet(member.getRoleSet())
-                .build();
+        MemberDto memberdto = new MemberDto();
+        MemberDto userInfo = memberdto.convertToDetailMemberDto(member);
 
         return ResponseEntity.ok(userInfo);
     }
@@ -146,11 +130,10 @@ public class MemberController {
             // 닉네임 중복 검사
             boolean exists = memberRepository.existsByDisplayName(displayName);
 
-            System.out.println(exists);
 
             if (auth != null && auth.isAuthenticated()){
-                String presentDisplayName = ((CustomUserDetails)auth.getPrincipal()).getDisplayName();
-                System.out.println(presentDisplayName);
+                String presentDisplayName = (String)auth.getPrincipal();
+
                 if(presentDisplayName.equals(displayName)){
                     response.put("available", true);
                     response.put("message", "지금 니 아이디입니다");
