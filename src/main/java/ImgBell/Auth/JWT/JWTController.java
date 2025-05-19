@@ -26,6 +26,7 @@ public class JWTController {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final AuthenticationManager authenticationManager;
+    private final JWTUtil jwtUtil;
     @Value("${app.production}")
     private String appEnv;
 
@@ -50,8 +51,8 @@ public class JWTController {
             var auth2 = SecurityContextHolder.getContext().getAuthentication();
 
             // JWT 생성
-            String accessToken = JWTUtil.createAccessToken(auth2);
-            String refreshToken = JWTUtil.createRefreshToken(auth2.getName());
+            String accessToken = jwtUtil.createAccessToken(auth2);
+            String refreshToken = jwtUtil.createRefreshToken(auth2.getName());
 
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
             refreshCookie.setMaxAge(60 * 60 * 24 * 30); // 30일
@@ -84,16 +85,16 @@ public class JWTController {
                         .body(Map.of("message", "리프레시 토큰이 존재하지 않습니다."));
             }
             // 리프레시 토큰 만료 확인
-            if (JWTUtil.isTokenExpired(refreshToken)) {
+            if (jwtUtil.isTokenExpired(refreshToken)) {
                 System.out.println("토큰 만료됨");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "리프레시 토큰이 만료되었습니다."));
             }
 
             // 리프레시 토큰에서 사용자 정보(username 또는 userId) 추출
-            String username = JWTUtil.extractUsername(refreshToken);
+            String username = jwtUtil.extractUsername(refreshToken);
             // 추출한 사용자 정보로 새 액세스 토큰 생성
-            String newAccessToken = JWTUtil.createAccessToken(username, customUserDetailsService);
+            String newAccessToken = jwtUtil.refreshAccessToken(username);
             System.out.println("새 액세스 토큰 발급됨: " + newAccessToken);
 
             return ResponseEntity.ok(Map.of("accessToken", newAccessToken));

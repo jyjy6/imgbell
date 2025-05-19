@@ -61,7 +61,8 @@ public class MemberService {
 
         Member editTargetMember = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
-        
+
+
         // 비밀번호도 바꿨으면 설정
         if (memberDto.getPassword() != null && !memberDto.getPassword().isEmpty()) {
             editTargetMember.setPassword(passwordEncoder.encode(memberDto.getPassword()));
@@ -69,6 +70,7 @@ public class MemberService {
             editTargetMember.setPassword(editTargetMember.getPassword());
         }
 
+        System.out.println("에딧확인3");
         memberDto.updateMember(editTargetMember);
         // 사용자 저장
         memberRepository.save(editTargetMember);

@@ -14,6 +14,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,12 +27,15 @@ import java.util.Date;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
+@RequiredArgsConstructor
 @Component
 public class JWTUtil {
     @Value("${jwt.key}")
     private String jwtKey; // application.properties에서 값 주입
+    private final CustomUserDetailsService customUserDetailsService;
 
-    private static SecretKey key; // static 유지, final 제거
+    private SecretKey key;
 
     @PostConstruct
     private void init() {
@@ -39,7 +43,7 @@ public class JWTUtil {
     }
 
     // JWT 만들어주는 함수
-    public static String createAccessToken(Authentication auth) {
+    public String createAccessToken(Authentication auth) {
 
         CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
         Member member = userDetails.getMember();
@@ -52,15 +56,7 @@ public class JWTUtil {
         MemberDto memberDto = MemberDto.builder()
                 .id(member.getId())
                 .username(member.getUsername())
-                .displayName(member.getDisplayName())
-                .email(member.getEmail())
-                .phone(member.getPhone())
-                .createdAt(member.getCreatedAt())
                 .roleSet(roleSet)
-                .profileImage(member.getProfileImage())
-                .mainAddress(member.getMainAddress())
-                .subAddress(member.getSubAddress())
-                .country(member.getCountry())
                 .build();
 
 
@@ -83,9 +79,15 @@ public class JWTUtil {
                 .compact();
     }
 
-    //    jwt재발급 해주는함수 메소드 오버라이딩 -> AccessToken이 만료되면 Authentication auth는 무효가 되기때문에 username
-    public static String createAccessToken(String username, Set<String> authorities, Long memberId /* 필요한 다른 정보들 */) {
+    //    jwt재발급 해주는 메소드-> AccessToken이 만료되면 Authentication auth는 무효가 되기때문에 username
+    public String refreshAccessToken(String username) {
         // username으로 사용자 정보를 로드
+        CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(username);
+
+
+        // 사용자 정보를 기반으로 Authentication 객체 생성 (패스워드는 null로 설정)
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
         // 이제 기존의 createAccessToken(Authentication auth) 로직을 재사용할 수 있음
         CustomUserDetails customUserDetails = (CustomUserDetails) auth.getPrincipal();
@@ -98,15 +100,7 @@ public class JWTUtil {
         MemberDto memberDto = MemberDto.builder()
                 .id(member.getId())
                 .username(member.getUsername())
-                .displayName(member.getDisplayName())
-                .email(member.getEmail())
-                .phone(member.getPhone())
-                .createdAt(member.getCreatedAt())
                 .roleSet(roleSet)
-                .profileImage(member.getProfileImage())
-                .mainAddress(member.getMainAddress())
-                .subAddress(member.getSubAddress())
-                .country(member.getCountry())
                 .build();
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -129,7 +123,7 @@ public class JWTUtil {
     }
 
 
-    public static String createRefreshToken(String username) {
+    public String createRefreshToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
@@ -139,7 +133,7 @@ public class JWTUtil {
     }
 
     // JWT 까주는 함수
-    public static Claims extractToken(String token) {
+    public Claims extractToken(String token) {
         Claims claims = Jwts.parser().verifyWith(key).build()
                 .parseSignedClaims(token).getPayload();
         return claims;
@@ -147,7 +141,7 @@ public class JWTUtil {
 
 
     //JWT 토큰에서 클레임(Claims)을 추출하는 기능을 수행
-    public static Claims extractClaims(String token) {
+    public Claims extractClaims(String token) {
         return Jwts.parser()
                 .setSigningKey(key)
                 .build()
@@ -156,7 +150,7 @@ public class JWTUtil {
     }
 
     //이 메서드는 JWT 토큰이 만료되었는지 여부를 확인하는 기능을 수행
-    public static boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         try {
             final Date expiration = extractClaims(token).getExpiration();
             return expiration.before(new Date());
@@ -171,7 +165,7 @@ public class JWTUtil {
 
 
     //이 메서드는 JWT 토큰에서 사용자 이름을 추출하는 기능을 수행
-    public static String extractUsername(String token) {
+    public String extractUsername(String token) {
         return extractClaims(token).getSubject();
     }
 

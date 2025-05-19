@@ -30,6 +30,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
     private static final String REFRESH_TOKEN_ENDPOINT = "/api/refresh-token";
+    private final JWTUtil jwtUtil;
 
 
     private final String allowedOrigins; // Spring Security->SecurityConfig 생성자를 통해 주입
@@ -40,7 +41,6 @@ public class JWTFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        System.out.println("allowdOrigins:"+allowedOrigins);
         System.out.println("JWT 필터 시작 - 요청 URI: " + request.getRequestURI());
         if (pathMatcher.match("/api/oauth/google", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");
@@ -77,15 +77,16 @@ public class JWTFilter extends OncePerRequestFilter {
 
         String jwt = getJwtFromRequest(request);
 
+        System.out.println("현재jwt"+jwt);
+
         if (jwt != null) {
             try {
                 // JWT 유효성 검증
                 System.out.println("만료됐는지 확인1");
-                if (!JWTUtil.isTokenExpired(jwt)) {
+                if (!jwtUtil.isTokenExpired(jwt)) {
                     // JWT에서 Claims 추출
-                    Claims claims = JWTUtil.extractToken(jwt);
+                    Claims claims = jwtUtil.extractToken(jwt);
                     String userInfoJson = claims.get("userInfo", String.class);
-                    System.out.println("만료됐는지 확인2");
 
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.registerModule(new JavaTimeModule());
@@ -101,6 +102,7 @@ public class JWTFilter extends OncePerRequestFilter {
                             memberDto.getUsername(), null, authorities);
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+
                 } else {
                     response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
                     response.setHeader("Access-Control-Allow-Credentials", "true");

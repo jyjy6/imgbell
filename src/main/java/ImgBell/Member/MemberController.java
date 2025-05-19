@@ -129,11 +129,10 @@ public class MemberController {
         try {
             // 닉네임 중복 검사
             boolean exists = memberRepository.existsByDisplayName(displayName);
-
-
             if (auth != null && auth.isAuthenticated()){
-                String presentDisplayName = (String)auth.getPrincipal();
 
+                Member member = memberRepository.findByUsername(auth.getName()).orElseThrow(() -> new RuntimeException("Member not found"));
+                String presentDisplayName = member.getDisplayName();
                 if(presentDisplayName.equals(displayName)){
                     response.put("available", true);
                     response.put("message", "지금 니 아이디입니다");

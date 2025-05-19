@@ -2,6 +2,7 @@ package ImgBell.Security;
 
 
 import ImgBell.Auth.JWT.JWTFilter;
+import ImgBell.Auth.JWT.JWTUtil;
 import ImgBell.Member.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JWTUtil jwtUtil;
 
     private final CustomUserDetailsService userDetailsService;
 
@@ -54,7 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/premium/**").hasRole("PREMIUM")
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
-                ).addFilterBefore(new JWTFilter(allowedOrigins), UsernamePasswordAuthenticationFilter.class)
+                ).addFilterBefore(new JWTFilter(jwtUtil, allowedOrigins), UsernamePasswordAuthenticationFilter.class)
                 .authenticationProvider(authenticationProvider());
         return http.build();
     }
