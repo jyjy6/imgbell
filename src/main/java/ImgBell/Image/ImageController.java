@@ -68,14 +68,12 @@ public class ImageController {
             @RequestParam(required = false) String grade,
             @RequestParam(required = false) Boolean myImageList
     ) {
-
-        // 로그인 유저의 업로드만 필터링
+        // 마이페이지 이미지리스트는 로그인 유저의 업로드만 필터링
         if (Boolean.TRUE.equals(myImageList) && auth != null && auth.isAuthenticated()) {
             uploaderName = auth.getName();  // ✅ 현재 로그인된 유저 이름으로 덮어쓰기
         }
-
         return ResponseEntity.ok(imageService.getImageList(
-                pageable, tag, imageName, uploaderName, artist, keyword, searchType, grade
+                pageable, tag, imageName, uploaderName, artist, keyword, searchType, grade, myImageList
         ));
     }
 

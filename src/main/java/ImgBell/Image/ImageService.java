@@ -124,7 +124,7 @@ public class ImageService {
 
     @Transactional(readOnly = true)
     public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName, String artist,
-                                       String keyword, String searchType, String grade) {
+                                       String keyword, String searchType, String grade, Boolean myImageList) {
         Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
 
         // 검색 타입에 따른 조건 적용
@@ -171,6 +171,11 @@ public class ImageService {
         // 등급 필터링
         if (grade != null && !grade.isEmpty()) {
             spec = spec.and(ImageSpecification.hasGrade(grade));
+        }
+        
+        //마이페이지에선 해당 업로더만
+        if(myImageList){
+            spec = spec.and(ImageSpecification.hasUploaderName(uploaderName));
         }
 
         Page<Image> images = imageRepository.findAll(spec, pageable);
