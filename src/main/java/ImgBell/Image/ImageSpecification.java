@@ -1,11 +1,14 @@
 package ImgBell.Image;
 
 import ImgBell.Image.Tag.Tag;
+import ImgBell.ImageLike.ImageLike;
 import ImgBell.Member.Member;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.util.List;
 
 public class ImageSpecification {
 
@@ -61,6 +64,15 @@ public class ImageSpecification {
             }
             // Image 엔티티의 artist 필드 직접 사용
             return cb.like(cb.lower(root.get("artist")), "%" + artist.toLowerCase() + "%");
+        };
+    }
+
+    public static Specification<Image> likedByMember(List<Long> likedImageIds) {
+        return (root, query, cb) -> {
+            if (likedImageIds == null || likedImageIds.isEmpty()) {
+                return cb.disjunction(); // 빈 결과 반환
+            }
+            return root.get("id").in(likedImageIds);
         };
     }
 

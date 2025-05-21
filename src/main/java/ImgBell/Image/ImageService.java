@@ -5,6 +5,7 @@ import ImgBell.Image.Comment.CommentDto;
 import ImgBell.Image.Tag.Tag;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
+import ImgBell.ImageLike.ImageLikeRepository;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ public class ImageService {
     private final ImageRepository imageRepository;
     private final MemberRepository memberRepository;
     private final TagRepository tagRepository;
+    private final ImageLikeRepository imageLikeRepository;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -124,7 +127,7 @@ public class ImageService {
 
     @Transactional(readOnly = true)
     public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName, String artist,
-                                       String keyword, String searchType, String grade, Boolean myImageList) {
+                                       String keyword, String searchType, String grade, Boolean myImageList, Boolean likeImageList, Authentication auth) {
         Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
 
         // 검색 타입에 따른 조건 적용
@@ -176,6 +179,13 @@ public class ImageService {
         //마이페이지에선 해당 업로더만
         if(myImageList){
             spec = spec.and(ImageSpecification.hasUploaderName(uploaderName));
+        }
+
+        // 좋아요 이미지 필터
+        if (Boolean.TRUE.equals(likeImageList) && auth != null && auth.isAuthenticated()) {
+            Long memberId = memberRepository.findByUsername(auth.getName()).orElseThrow().getId();
+            List<Long> likedImageIds = imageLikeRepository.findLikedImageIdsByMemberId(memberId);
+            spec = spec.and(ImageSpecification.likedByMember(likedImageIds));
         }
 
         Page<Image> images = imageRepository.findAll(spec, pageable);
