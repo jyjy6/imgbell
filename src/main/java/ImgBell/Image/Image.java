@@ -3,6 +3,7 @@ package ImgBell.Image;
 
 import ImgBell.Image.Comment.Comment;
 import ImgBell.Image.Tag.Tag;
+import ImgBell.ImageLike.ImageLike;
 import ImgBell.Member.Member;
 import jakarta.persistence.*;
 import lombok.*;
@@ -46,7 +47,7 @@ public class Image {
     private String source;    // 원본 출처 URL
     private String artist;    // 아티스트/작가 이름
 
-    // 인기도/통계 정보
+    // 인기도/통계 정보 나중엔 주간viewCount, 월간viewCount같은걸 저장해도 좋을 듯.
     private Integer viewCount = 0;
     private Integer likeCount = 0;
     private Integer downloadCount = 0;
@@ -78,6 +79,9 @@ public class Image {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<Tag> tags = new HashSet<>();
+
+    @OneToMany(mappedBy = "image", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ImageLike> imageLikes = new HashSet<>();
 
     // 댓글 관계 (일대다)
     @OneToMany(mappedBy = "image", cascade = CascadeType.ALL, orphanRemoval = true)

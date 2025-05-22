@@ -88,12 +88,20 @@ public class ImageController {
         return ResponseEntity.ok(imageService.getImageDetail(id));
     }
 
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteImage(@PathVariable Long id, Authentication auth) {
+
+        return imageService.deleteImage(id,auth);
+    }
+    
+
     @GetMapping("/popular")
     public ResponseEntity<Page<ImageDto>> getPopularImages(
             @PageableDefault(size = 10) Pageable pageable
     ) {
         return ResponseEntity.ok(imageService.getPopularImages(pageable));
     }
+    
 
 
     @Getter

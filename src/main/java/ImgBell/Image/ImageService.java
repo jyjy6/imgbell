@@ -13,11 +13,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -35,6 +41,7 @@ public class ImageService {
     private final MemberRepository memberRepository;
     private final TagRepository tagRepository;
     private final ImageLikeRepository imageLikeRepository;
+    private final S3Client s3Client;
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -122,6 +129,34 @@ public class ImageService {
         }
         // 기본값
         return "other";
+    }
+
+
+    @Transactional
+    public ResponseEntity<?> deleteImage(@PathVariable Long id, Authentication auth){
+        // 이미지 조회
+        Image deleteTargetImage = imageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("그런 이미지 없습니다"));
+        // 업로더가 현재 로그인한 사용자와 일치하는지 확인
+        if (!deleteTargetImage.getUploaderName().equals(auth.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("이미지를 삭제할 권한이 없습니다");
+        }
+
+        // 이미지 삭제
+        String s3Key = extractS3Key(deleteTargetImage.getImageUrl());
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(s3Key)
+                    .build());
+            System.out.println("삭제됨");
+        } catch (S3Exception e) {
+            System.out.printf("S3 이미지삭제실패");
+            System.out.println(e.getMessage());
+        }
+
+        imageRepository.delete(deleteTargetImage);
+        return ResponseEntity.ok().body("이미지가 성공적으로 삭제되었습니다");
     }
 
 
@@ -271,6 +306,12 @@ public class ImageService {
         }
         dto.setComments(commentDtos);
         return dto;
+    }
+
+
+    public String extractS3Key(String imageUrl) {
+        return imageUrl.substring(imageUrl.indexOf(".com/") + 5);
+
     }
 
 
