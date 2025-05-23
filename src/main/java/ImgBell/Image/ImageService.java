@@ -163,7 +163,17 @@ public class ImageService {
     @Transactional(readOnly = true)
     public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName, String artist,
                                        String keyword, String searchType, String grade, Boolean myImageList, Boolean likeImageList, Authentication auth) {
-        Specification<Image> spec = Specification.where(ImageSpecification.isPublic());
+
+        Specification<Image> spec = Specification.where(null);
+
+        
+        if(myImageList){
+            //마이페이지에선 해당 업로더만
+            spec = spec.and(ImageSpecification.hasUploaderName(auth.getName()));
+        } else {
+            //마이페이지가 아닌경우엔 공개된 것만
+            spec = Specification.where(ImageSpecification.isPublic());
+        }
 
         // 검색 타입에 따른 조건 적용
         if (searchType != null) {
@@ -211,10 +221,7 @@ public class ImageService {
             spec = spec.and(ImageSpecification.hasGrade(grade));
         }
         
-        //마이페이지에선 해당 업로더만
-        if(myImageList){
-            spec = spec.and(ImageSpecification.hasUploaderName(uploaderName));
-        }
+
 
         // 좋아요 이미지 필터
         if (Boolean.TRUE.equals(likeImageList) && auth != null && auth.isAuthenticated()) {
@@ -263,6 +270,7 @@ public class ImageService {
                 .likeCount(image.getLikeCount())
                 .viewCount(image.getViewCount())
                 .imageGrade(image.getImageGrade())
+                .isPublic(image.getIsPublic())
                 .build();
     }
 
