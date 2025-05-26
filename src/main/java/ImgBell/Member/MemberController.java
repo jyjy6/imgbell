@@ -60,7 +60,8 @@ public class MemberController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
         }
 
-        var result = memberRepository.findByUsername(auth.getName());
+        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+        var result = memberRepository.findByUsername(username);
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("사용자를 찾을 수 없습니다");
         }
@@ -131,7 +132,8 @@ public class MemberController {
             boolean exists = memberRepository.existsByDisplayName(displayName);
             if (auth != null && auth.isAuthenticated()){
 
-                Member member = memberRepository.findByUsername(auth.getName()).orElseThrow(() -> new RuntimeException("Member not found"));
+                String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+                Member member = memberRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("Member not found"));
                 String presentDisplayName = member.getDisplayName();
                 if(presentDisplayName.equals(displayName)){
                     response.put("available", true);

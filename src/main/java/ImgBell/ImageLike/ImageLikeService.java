@@ -32,7 +32,7 @@ public class ImageLikeService {
 
         // 중복 좋아요 체크
         Optional<ImageLike> existingLike = imageLikeRepository.findByMemberAndImage(member, image);
-        Image targetImage = imageRepository.findById(imageId).orElseThrow(()->new RuntimeException("그런유저 없음"));
+        Image targetImage = imageRepository.findById(imageId).orElseThrow(()->new RuntimeException("그런이미지 없음"));
 
         if (existingLike.isPresent()) {
             // 이미 좋아요 누름 → 취소

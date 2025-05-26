@@ -6,6 +6,7 @@ import ImgBell.Image.Tag.Tag;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
 import ImgBell.ImageLike.ImageLikeRepository;
+import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -138,7 +139,8 @@ public class ImageService {
         Image deleteTargetImage = imageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("그런 이미지 없습니다"));
         // 업로더가 현재 로그인한 사용자와 일치하는지 확인
-        if (!deleteTargetImage.getUploaderName().equals(auth.getName())) {
+        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+        if (!deleteTargetImage.getUploaderName().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("이미지를 삭제할 권한이 없습니다");
         }
 
@@ -169,7 +171,8 @@ public class ImageService {
         
         if(myImageList){
             //마이페이지에선 해당 업로더만
-            spec = spec.and(ImageSpecification.hasUploaderName(auth.getName()));
+            String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+            spec = spec.and(ImageSpecification.hasUploaderName(username));
         } else {
             //마이페이지가 아닌경우엔 공개된 것만
             spec = Specification.where(ImageSpecification.isPublic());
@@ -225,7 +228,7 @@ public class ImageService {
 
         // 좋아요 이미지 필터
         if (Boolean.TRUE.equals(likeImageList) && auth != null && auth.isAuthenticated()) {
-            Long memberId = memberRepository.findByUsername(auth.getName()).orElseThrow().getId();
+            Long memberId = ((CustomUserDetails)auth.getPrincipal()).getId();
             List<Long> likedImageIds = imageLikeRepository.findLikedImageIdsByMemberId(memberId);
             spec = spec.and(ImageSpecification.likedByMember(likedImageIds));
         }

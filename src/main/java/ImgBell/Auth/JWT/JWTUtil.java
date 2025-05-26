@@ -56,9 +56,9 @@ public class JWTUtil {
         MemberDto memberDto = MemberDto.builder()
                 .id(member.getId())
                 .username(member.getUsername())
+                .displayName(member.getDisplayName())
                 .roleSet(roleSet)
                 .build();
-
 
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
@@ -84,7 +84,6 @@ public class JWTUtil {
         // username으로 사용자 정보를 로드
         CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(username);
 
-
         // 사용자 정보를 기반으로 Authentication 객체 생성 (패스워드는 null로 설정)
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 userDetails, null, userDetails.getAuthorities());
@@ -100,6 +99,7 @@ public class JWTUtil {
         MemberDto memberDto = MemberDto.builder()
                 .id(member.getId())
                 .username(member.getUsername())
+                .displayName(member.getDisplayName())
                 .roleSet(roleSet)
                 .build();
 

@@ -1,13 +1,18 @@
 package ImgBell.Forum;
 
 
+import ImgBell.Forum.ForumComment.ForumComment;
+import ImgBell.Forum.ForumLike.ForumLike;
+import ImgBell.ImageLike.ImageLike;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -64,22 +69,14 @@ public class Forum {
     @OneToMany(mappedBy = "forum", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ForumComment> comments;
 
+    @OneToMany(mappedBy = "forum", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ForumLike> forumLikes = new HashSet<>();
 
     // 게시글 타입 enum
     public enum PostType {
-        NOTICE("공지"),
-        HOT("인기"),
-        NORMAL("일반");
-
-        private final String description;
-
-        PostType(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
-        }
+        NOTICE,
+        HOT,
+        NORMAL
     }
 
     // 비즈니스 메서드들
@@ -98,4 +95,5 @@ public class Forum {
     public int getCommentCount() {
         return comments != null ? comments.size() : 0;
     }
+
 }

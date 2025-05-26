@@ -49,6 +49,8 @@ public class CustomUserDetails implements UserDetails {
         return member.getUsername();
     }
 
+
+
     // 계정 만료 여부: false = 만료됨
     @Override
     public boolean isAccountNonExpired() {

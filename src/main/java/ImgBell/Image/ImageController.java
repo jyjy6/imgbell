@@ -1,5 +1,6 @@
 package ImgBell.Image;
 
+import ImgBell.Member.CustomUserDetails;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -71,7 +72,7 @@ public class ImageController {
     ) {
         // 마이페이지 이미지리스트는 로그인 유저의 업로드만 필터링
         if (Boolean.TRUE.equals(myImageList) && auth != null && auth.isAuthenticated()) {
-            uploaderName = auth.getName();  // ✅ 현재 로그인된 유저 이름으로 덮어쓰기
+            uploaderName = ((CustomUserDetails)auth.getPrincipal()).getUsername();  // ✅ 현재 로그인된 유저 이름으로 덮어쓰기
         }
         return ResponseEntity.ok(imageService.getImageList(
                 pageable, tag, imageName, uploaderName, artist, keyword, searchType, grade, myImageList, likeImageList, auth

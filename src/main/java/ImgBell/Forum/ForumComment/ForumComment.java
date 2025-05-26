@@ -1,5 +1,6 @@
-package ImgBell.Forum;
+package ImgBell.Forum.ForumComment;
 
+import ImgBell.Forum.Forum;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -27,6 +28,8 @@ public class ForumComment {
     @Column(nullable = false, length = 50)
     private String authorDisplayName;
 
+    @Column(nullable = false, length = 50)
+    private String authorUsername;
 
     @Column(nullable = false)
     @Builder.Default

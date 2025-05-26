@@ -2,7 +2,9 @@ package ImgBell.Auth.JWT;
 
 
 
+import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Dto.MemberDto;
+import ImgBell.Member.Member;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -94,12 +96,23 @@ public class JWTFilter extends OncePerRequestFilter {
                     MemberDto memberDto = objectMapper.readValue(userInfoJson, MemberDto.class);
                     System.out.println("멤버디티오: " + memberDto);
 
-                    // JWT에서 권한 정보 추출 (authorities가 JWT에 포함되어 있다고 가정)
-                    Collection<GrantedAuthority> authorities = extractAuthoritiesFromMemberDto(memberDto);
+                    Member member = Member.builder()
+                            .id(memberDto.getId())
+                            .username(memberDto.getUsername())
+                            .displayName(memberDto.getDisplayName())
+                            .email(memberDto.getEmail())
+                            .roles(memberDto.getRoleSet())
+                            .build();
 
-                    // DB 조회 없이 바로 Authentication 객체 생성
+                    // CustomUserDetails 생성 (Refresh Token과 동일한 방식)
+                    CustomUserDetails userDetails = new CustomUserDetails(member);
+
+                    // Authentication 객체 생성 (이제 일관성 있게 CustomUserDetails 사용)
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            memberDto.getUsername(), null, authorities);
+                            userDetails,                    // CustomUserDetails 객체 (기존: memberDto.getUsername())
+                            null,
+                            userDetails.getAuthorities()    // CustomUserDetails에서 권한 가져오기 (기존: authorities)
+                    );
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -142,4 +155,6 @@ public class JWTFilter extends OncePerRequestFilter {
         }
         return authorities;
     }
+
+
 }

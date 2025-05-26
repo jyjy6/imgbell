@@ -44,6 +44,7 @@ public class MemberFormDto {
                 .marketingAccepted(this.marketingAccepted)
                 .build();
     }
+
     public void updateMember(Member member) {
         member.setName(this.name);
         member.setDisplayName(this.displayName);
