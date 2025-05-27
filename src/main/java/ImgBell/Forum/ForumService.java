@@ -31,6 +31,31 @@ public class ForumService {
         forumRepository.save(forum);
     }
 
+    public void editForum(Long id, ForumFormDto forumDto, Authentication auth){
+        try {
+            String username = ((CustomUserDetails) auth.getPrincipal()).getUsername();
+            String displayName = ((CustomUserDetails) auth.getPrincipal()).getDisplayName();
+
+
+            Forum forum = forumRepository.findById(id).orElseThrow(() -> new RuntimeException("그런 글 없음"));
+            if (!username.equals(forum.getAuthorUsername())) {
+                throw new RuntimeException("글쓴이만 수정할 수 있습니다.");
+            }
+            forum.setTitle(forumDto.getTitle());
+            forum.setContent(forumDto.getContent());
+            Forum.PostType postType = forumDto.getType() != null ?
+                    forumDto.getType() : Forum.PostType.NORMAL;
+            forum.setType(postType);
+            forum.setAuthorDisplayName(displayName);
+            forum.setAuthorUsername(username);
+            forumRepository.save(forum);
+        } catch (Exception e){
+            System.out.println("에러남");
+            System.out.println(e.getMessage());
+        }
+    }
+
+
 
     public Page<ForumResponse> getForumList(Forum.PostType forumType, Pageable pageable) {
         return forumRepository.findByTypeAndIsDeletedFalse(forumType, pageable)
@@ -41,6 +66,23 @@ public class ForumService {
     public ForumResponse getForumDetail(Long id) {
         Forum forum = forumRepository.findById(id).orElseThrow();
         return ForumResponse.from(forum);  // from 메서드 사용 (전체 정보 포함)
+    }
+
+    //포럼 수정용 Dto반환
+    public ForumFormDto getForumDetail(Long id, Authentication auth) {
+
+        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+        Forum forum = forumRepository.findById(id).orElseThrow();
+
+        if(!username.equals(forum.getAuthorUsername())){
+            throw new RuntimeException("글쓴이만 수정할 수 있습니다.");
+        }
+        ForumFormDto editForm = new ForumFormDto();
+        editForm.setTitle(forum.getTitle());
+        editForm.setContent(forum.getContent());
+        editForm.setType(forum.getType());
+
+        return editForm;
     }
 
 

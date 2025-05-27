@@ -34,8 +34,6 @@ public class ImageDto {
     private Boolean isPublic = true;
     private Boolean isApproved;
     private List<CommentDto> comments;
-
-
 }
 
 

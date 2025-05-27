@@ -43,9 +43,25 @@ public class ForumController {
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
     }
 
+    //포럼 상세보기
     @GetMapping("/{id}")
     public ForumResponse getForumPost(@PathVariable("id") Long id){
         return forumService.getForumDetail(id);
+    }
+
+    //포럼 수정 시 기존데이터 불러오기
+    @GetMapping("/edit/{id}")
+    public ForumFormDto getForForumEdit(@PathVariable("id") Long id, Authentication auth){
+
+        return forumService.getForumDetail(id, auth);
+    }
+
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<String> editForum(@PathVariable("id") Long id,
+                                            @RequestBody ForumFormDto forumFormDto,
+                                            Authentication auth) {
+        forumService.editForum(id, forumFormDto, auth);
+        return ResponseEntity.ok("수정완료");
     }
 
     @PutMapping("/view/{id}")
@@ -54,6 +70,7 @@ public class ForumController {
         forum.increaseViews();
         forumRepository.save(forum);
     }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<?> deleteForum(@PathVariable("id") Long id) {

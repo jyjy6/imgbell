@@ -1,6 +1,7 @@
 package ImgBell.Image;
 
 import ImgBell.Member.CustomUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -15,7 +16,9 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/image")
@@ -92,9 +95,33 @@ public class ImageController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteImage(@PathVariable Long id, Authentication auth) {
 
+
         return imageService.deleteImage(id,auth);
     }
-    
+
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<?> editImage(@RequestBody ImageDto dto, Authentication auth) {
+
+        return imageService.editImage(dto, auth);
+    }
+
+
+    @PutMapping("/ispublic/{id}")
+    public ResponseEntity<?> toggleImagePublic(@PathVariable Long id, Authentication auth){
+        try {
+            Long userId = ((CustomUserDetails) auth.getPrincipal()).getId();
+            boolean isPublic = imageService.toggleImagePublic(id, userId);
+            return ResponseEntity.ok(Map.of("success", true, "isPublic", isPublic));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+
+
 
     @GetMapping("/popular")
     public ResponseEntity<Page<ImageDto>> getPopularImages(

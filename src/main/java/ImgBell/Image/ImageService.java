@@ -10,6 +10,7 @@ import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -161,6 +162,35 @@ public class ImageService {
         return ResponseEntity.ok().body("이미지가 성공적으로 삭제되었습니다");
     }
 
+    @Transactional
+    public ResponseEntity<?> editImage(ImageDto dto, Authentication auth){
+
+        Image targetImage = imageRepository.findById(dto.getId()).orElseThrow(()->new RuntimeException("그런이미지 없음"));
+        targetImage.setImageName(dto.getImageName());
+        Set<Tag> tagEntities = new HashSet<>();
+        for (TagDto tagDto : dto.getTags()) {
+            Tag tag = tagRepository.findByName(tagDto.getName())
+                    .orElseGet(() -> {
+                        Tag newTag = new Tag(tagDto.getName());
+                        newTag.setDescription(tagDto.getDescription());
+                        newTag.setCategory(tagDto.getCategory());
+                        return tagRepository.save(newTag);
+                    });
+            tag.setUsageCount(tag.getUsageCount() + 1);
+            tagEntities.add(tag);
+        }
+        targetImage.setTags(tagEntities);
+        targetImage.setSource(dto.getSource());
+        targetImage.setArtist(dto.getArtist());
+        imageRepository.save(targetImage);
+
+        Image savedImage = imageRepository.save(targetImage);
+
+        // Entity를 DTO로 변환
+        ImageDto responseDto = convertToRequestDto(savedImage);
+        return ResponseEntity.ok(responseDto);
+    }
+
 
     @Transactional(readOnly = true)
     public Page<ImageDto> getImageList(Pageable pageable, String tag, String imageName, String uploaderName, String artist,
@@ -168,7 +198,7 @@ public class ImageService {
 
         Specification<Image> spec = Specification.where(null);
 
-        
+
         if(myImageList){
             //마이페이지에선 해당 업로더만
             String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
@@ -223,7 +253,7 @@ public class ImageService {
         if (grade != null && !grade.isEmpty()) {
             spec = spec.and(ImageSpecification.hasGrade(grade));
         }
-        
+
 
 
         // 좋아요 이미지 필터
@@ -246,6 +276,25 @@ public class ImageService {
         return images.map(this::convertToLightDto);
     }
 
+    // Service
+    @Transactional
+    public boolean toggleImagePublic(Long imageId, Long userId) {
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new IllegalArgumentException("이미지를 찾을 수 없습니다."));
+
+        // 업로더 확인
+        if (image.getUploader() != null && !image.getUploader().getId().equals(userId)) {
+            throw new SecurityException("이미지 공개 설정을 변경할 권한이 없습니다.");
+        }
+
+        // 공개/비공개 토글
+        image.setIsPublic(!image.getIsPublic());
+        imageRepository.save(image);
+
+        return image.getIsPublic();
+    }
+
+
     /**
      * 단일 이미지 상세 정보를 조회하는 메서드
      */
@@ -260,6 +309,14 @@ public class ImageService {
             imageRepository.save(image);
             return convertToRequestDto(image);
     }
+
+
+
+
+
+
+
+
 
     /**
      * Image Entity를 ImageResponseDto로 변환하는 메서드
