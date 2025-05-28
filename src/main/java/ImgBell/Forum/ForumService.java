@@ -85,6 +85,14 @@ public class ForumService {
         return editForm;
     }
 
+    // 검색 기능 수정 - 키워드에 % 기호 추가
+    public Page<ForumResponse> searchForums(String keyword, Pageable pageable) {
+        // 키워드 앞뒤에 % 기호 추가
+        String searchKeyword = "%" + keyword + "%";
+        return forumRepository.findByKeywordAndIsDeletedFalse(searchKeyword, pageable)
+                .map(ForumResponse::forList);
+    }
+
 
 
 

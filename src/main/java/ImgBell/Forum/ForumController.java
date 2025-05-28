@@ -114,7 +114,14 @@ public class ForumController {
         }
     }
 
-
-
+    // 검색 기능 추가
+    @GetMapping("/search")
+    public Page<ForumResponse> searchForums(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return forumService.searchForums(keyword, 
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
+    }
 
 }
