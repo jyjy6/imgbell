@@ -299,13 +299,13 @@ public class ImageService {
      * 단일 이미지 상세 정보를 조회하는 메서드
      */
     @Transactional
-    public ImageDto getImageDetail(Long id) {
+    public ImageDto getImageDetail(Long id, Boolean increaseView) {
             Image image = imageRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
             // 조회수 증가
-        System.out.println("디테일이미지");
-        System.out.println(image);
-            image.setViewCount(image.getViewCount()+1);
+            if(increaseView) {
+                image.setViewCount(image.getViewCount() + 1);
+            }
             imageRepository.save(image);
             return convertToRequestDto(image);
     }

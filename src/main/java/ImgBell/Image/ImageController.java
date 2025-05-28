@@ -88,8 +88,8 @@ public class ImageController {
 
 //     * 단일 이미지 상세 정보를 조회합니다.
     @GetMapping("/{id}")
-    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(imageService.getImageDetail(id));
+    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id, @RequestParam Boolean increaseView) {
+        return ResponseEntity.ok(imageService.getImageDetail(id, increaseView));
     }
 
     @DeleteMapping("/delete/{id}")
