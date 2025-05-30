@@ -48,12 +48,14 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable());
         http
                 .authorizeHttpRequests(auth -> auth
+                        // 프리플라이트(OPTIONS)는 모두 허용
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 관리자 페이지
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 최고 관리자 페이지
-                        .requestMatchers("/superadmin/**").hasRole("SUPERADMIN")
+                        .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
                         // 프리미엄 회원 페이지
-                        .requestMatchers("/premium/**").hasRole("PREMIUM")
+                        .requestMatchers("/api/premium/**").hasRole("PREMIUM")
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JWTFilter(jwtUtil, allowedOrigins), UsernamePasswordAuthenticationFilter.class)

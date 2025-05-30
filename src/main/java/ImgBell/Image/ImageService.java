@@ -278,12 +278,15 @@ public class ImageService {
 
     // Service
     @Transactional
-    public boolean toggleImagePublic(Long imageId, Long userId) {
+    public boolean toggleImagePublic(Long imageId, Authentication auth) {
         Image image = imageRepository.findById(imageId)
                 .orElseThrow(() -> new IllegalArgumentException("이미지를 찾을 수 없습니다."));
+        Long userId = ((CustomUserDetails) auth.getPrincipal()).getId();
+
+        System.out.println(auth.getAuthorities());
 
         // 업로더 확인
-        if (image.getUploader() != null && !image.getUploader().getId().equals(userId)) {
+        if (image.getUploader() != null && !image.getUploader().getId().equals(userId) && auth.getAuthorities().contains("ROLE_ADMIN")){
             throw new SecurityException("이미지 공개 설정을 변경할 권한이 없습니다.");
         }
 

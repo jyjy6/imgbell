@@ -109,8 +109,8 @@ public class ImageController {
     @PutMapping("/ispublic/{id}")
     public ResponseEntity<?> toggleImagePublic(@PathVariable Long id, Authentication auth){
         try {
-            Long userId = ((CustomUserDetails) auth.getPrincipal()).getId();
-            boolean isPublic = imageService.toggleImagePublic(id, userId);
+
+            boolean isPublic = imageService.toggleImagePublic(id, auth);
             return ResponseEntity.ok(Map.of("success", true, "isPublic", isPublic));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

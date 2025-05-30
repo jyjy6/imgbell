@@ -44,6 +44,11 @@ public class JWTFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         System.out.println("JWT 필터 시작 - 요청 URI: " + request.getRequestURI());
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         if (pathMatcher.match("/api/oauth/google", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");
             filterChain.doFilter(request, response);

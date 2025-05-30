@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Arrays;
+import java.util.List;
+
 public interface ImageRepository extends JpaRepository<Image, Long>, JpaSpecificationExecutor<Image> {
 
     /**
@@ -30,4 +33,5 @@ public interface ImageRepository extends JpaRepository<Image, Long>, JpaSpecific
      */
     Page<Image> findAllByOrderByViewCountDesc(Pageable pageable);
 
+    List<Image> findTop5ByOrderByCreatedAtDesc();
 }
