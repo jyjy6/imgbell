@@ -71,6 +71,7 @@ public class Member {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "member_roles", joinColumns = @JoinColumn(name = "member_id"))
     @Column(name = "role")
+    @Builder.Default
     private Set<String> roles = new HashSet<>(Set.of("ROLE_USER")); // 기본 역할
 
 

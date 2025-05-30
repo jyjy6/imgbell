@@ -6,14 +6,16 @@ import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 
-public class CustomUserDetails implements UserDetails {
+public class CustomUserDetails implements UserDetails, OAuth2User {
 
     // Member 엔티티 반환 메소드 (추가 정보 접근용)
     @Getter
@@ -25,6 +27,13 @@ public class CustomUserDetails implements UserDetails {
         this.authorities = convertRolesToAuthorities(member.getRoleSet());
     }
 
+    private Map<String, Object> attributes;
+    public CustomUserDetails(Member member, Collection<SimpleGrantedAuthority> authorities, Map<String, Object> attributes) {
+        this.member = member;
+        this.authorities = authorities;
+        this.attributes = attributes;
+    }
+
     // 역할 문자열을 SimpleGrantedAuthority 객체로 변환
     private Collection<SimpleGrantedAuthority> convertRolesToAuthorities(Collection<String> roles) {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>(roles.size());
@@ -32,6 +41,11 @@ public class CustomUserDetails implements UserDetails {
             authorities.add(new SimpleGrantedAuthority(role));
         }
         return authorities;
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return attributes;
     }
 
     @Override
@@ -104,5 +118,10 @@ public class CustomUserDetails implements UserDetails {
     // 이메일 반환 메소드
     public String getEmail() {
         return member.getEmail();
+    }
+
+    @Override
+    public String getName() {
+        return member.getUsername();
     }
 }

@@ -93,6 +93,7 @@ public class JWTController {
 
             // 리프레시 토큰에서 사용자 정보(username 또는 userId) 추출
             String username = jwtUtil.extractUsername(refreshToken);
+            System.out.println("필터:유저네임"+username);
             // 추출한 사용자 정보로 새 액세스 토큰 생성
             String newAccessToken = jwtUtil.refreshAccessToken(username);
             System.out.println("새 액세스 토큰 발급됨: " + newAccessToken);

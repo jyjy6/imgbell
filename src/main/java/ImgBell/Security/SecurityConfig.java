@@ -3,6 +3,8 @@ package ImgBell.Security;
 
 import ImgBell.Auth.JWT.JWTFilter;
 import ImgBell.Auth.JWT.JWTUtil;
+import ImgBell.Auth.OAuth.CustomOAuth2UserService;
+import ImgBell.Auth.OAuth.OAuth2AuthenticationSuccessHandler;
 import ImgBell.Member.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -40,6 +43,10 @@ public class SecurityConfig {
 
     private final AuthenticationFailureHandler loginFailureHandler;
 
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+    private final CustomOAuth2UserService customOAuth2UserService;
+
     @Value("${allowed.origins}")
     private String allowedOrigins;
 
@@ -56,10 +63,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
                         // 프리미엄 회원 페이지
                         .requestMatchers("/api/premium/**").hasRole("PREMIUM")
+                        .requestMatchers("/api/oauth/**", "/oauth2/**").permitAll()
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JWTFilter(jwtUtil, allowedOrigins), UsernamePasswordAuthenticationFilter.class)
-                .authenticationProvider(authenticationProvider());
+                .authenticationProvider(authenticationProvider())
+                // ... 기존 설정
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oAuth2AuthenticationSuccessHandler)
+                        .userInfoEndpoint(user -> user
+                                .userService(customOAuth2UserService)
+                        ));
+
         return http.build();
     }
 

@@ -24,7 +24,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @RequiredArgsConstructor
@@ -49,7 +51,7 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
         
-        if (pathMatcher.match("/api/oauth/google", request.getRequestURI())) {
+        if (pathMatcher.match("/api/oauth/google/call-back", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");
             filterChain.doFilter(request, response);
             return;
@@ -106,7 +108,7 @@ public class JWTFilter extends OncePerRequestFilter {
                             .username(memberDto.getUsername())
                             .displayName(memberDto.getDisplayName())
                             .email(memberDto.getEmail())
-                            .roles(memberDto.getRoleSet())
+                            .roles(memberDto.getRoleSet() != null ? memberDto.getRoleSet() : new HashSet<>(Set.of("ROLE_USER")))
                             .build();
 
                     // CustomUserDetails 생성 (Refresh Token과 동일한 방식)
