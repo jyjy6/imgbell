@@ -28,28 +28,57 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = new DefaultOAuth2UserService().loadUser(userRequest);
 
-        // 구글에서 받아온 정보 추출
+        // 제공자 구분 (google, kakao)
+        String registrationId = userRequest.getClientRegistration().getRegistrationId();
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        String email = (String) attributes.get("email");
-        String name = (String) attributes.get("name");
+        
+        String email;
+        String name;
+        String uniqueId;
+        
+        if ("google".equals(registrationId)) {
+            // 구글에서 받아온 정보 추출
+            email = (String) attributes.get("email");
+            name = (String) attributes.get("name");
+            uniqueId = email; // 구글은 이메일을 고유 식별자로 사용
+            
+            System.out.println("구글에서받아온정보 : ");
+            System.out.println(email);
+            System.out.println(name);
+        } else if ("kakao".equals(registrationId)) {
+            // 카카오에서 받아온 정보 추출
+            String kakaoId = String.valueOf(attributes.get("id"));
+            Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+            Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+            
+            // 이메일이 없을 수 있으므로 카카오 ID를 기반으로 가짜 이메일 생성
+            email = kakaoAccount.get("email") != null ? 
+                    (String) kakaoAccount.get("email") : 
+                    "kakao_" + kakaoId + "@kakao.local";
+            name = (String) profile.get("nickname");
+            uniqueId = "kakao_" + kakaoId; // 카카오는 ID를 고유 식별자로 사용
+            
+            System.out.println("카카오에서받아온정보 : ");
+            System.out.println("카카오 ID: " + kakaoId);
+            System.out.println("이메일: " + email);
+            System.out.println("닉네임: " + name);
+        } else {
+            throw new OAuth2AuthenticationException("지원하지 않는 OAuth2 제공자입니다: " + registrationId);
+        }
 
-        System.out.println("구글에서받아온정보 : ");
-        System.out.println(email);
-        System.out.println(name);
-
-        // DB에 있는지 확인, 없으면 새로 생성
-        Member member = memberRepository.findByUsername(email)
+        // DB에 있는지 확인, 없으면 새로 생성 (uniqueId로 검색)
+        Member member = memberRepository.findByUsername(uniqueId)
                 .orElseGet(() -> {
                     Member newMember = Member.builder()
                             .email(email)
-                            .username(email)
-                            .name(name != null ? name : email) // name 필드에 값 설정
-                            .displayName(name != null ? name : email) // displayName도 같이 설정
-                            .password("oauth2user") // 실제로는 사용 안 함
-                            .roles(new HashSet<>(Set.of("ROLE_USER", "ROLE_OAUTH"))) // roles 초기화
-                            .termsAccepted(true) // OAuth2 사용자는 기본적으로 약관 동의로 처리
-                            .privacyAccepted(true) // OAuth2 사용자는 기본적으로 개인정보 동의로 처리
-                            .marketingAccepted(false) // 마케팅은 기본 false
+                            .username(uniqueId) // 고유 식별자를 username으로 사용
+                            .name(name != null ? name : uniqueId)
+                            .displayName(name != null ? name : uniqueId)
+                            .password("oauth2user")
+                            .roles(new HashSet<>(Set.of("ROLE_USER", "ROLE_OAUTH")))
+                            .termsAccepted(true)
+                            .privacyAccepted(true)
+                            .marketingAccepted(false)
                             .build();
                     return memberRepository.save(newMember);
                 });

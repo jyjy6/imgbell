@@ -39,13 +39,29 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         try {
             OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-            String email = oAuth2User.getAttribute("email");
-
+            
+            // 제공자에 따라 이메일 추출 방식 다름
+            String email;
             Map<String, Object> attributes = oAuth2User.getAttributes();
+            
+            if (attributes.containsKey("email")) {
+                // 구글의 경우
+                email = oAuth2User.getAttribute("email");
+            } else if (attributes.containsKey("kakao_account")) {
+                // 카카오의 경우
+                Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+                String kakaoId = String.valueOf(attributes.get("id"));
+                
+                // 이메일이 없으면 카카오 ID 기반으로 생성
+                email = kakaoAccount.get("email") != null ? 
+                        (String) kakaoAccount.get("email") : 
+                        "kakao_" + kakaoId;
+            } else {
+                throw new RuntimeException("사용자 정보를 찾을 수 없습니다.");
+            }
 
             String accessToken = jwtUtil.createAccessToken(authentication);
             String refreshToken = jwtUtil.createRefreshToken(email);
-
 
             // 쿠키 설정
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
@@ -61,8 +77,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             // 프론트엔드 URL로 리다이렉트 (토큰을 쿼리 파라미터로)
             String frontendUrl = isProduction ?
-                    "https://yourdomain.com/oauth/google-callback" :
-                    "http://localhost:5173/oauth/google-callback";
+                    "https://yourdomain.com/oauth/callback" :
+                    "http://localhost:5173/oauth/callback";
 
             String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl)
                     .queryParam("accessToken", accessToken)
