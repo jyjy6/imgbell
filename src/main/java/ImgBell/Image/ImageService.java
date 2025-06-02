@@ -203,10 +203,14 @@ public class ImageService {
             //마이페이지에선 해당 업로더만
             String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
             spec = spec.and(ImageSpecification.hasUploaderName(username));
-        } else {
-            //마이페이지가 아닌경우엔 공개된 것만
-            spec = Specification.where(ImageSpecification.isPublic());
+        }  else {
+            //ADMIN이 아닌 경우에만 공개된 것만 필터링
+            if( auth == null || !auth.isAuthenticated() || !auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))){
+                spec = spec.and(ImageSpecification.isPublic());
+            }
+
         }
+
 
         // 검색 타입에 따른 조건 적용
         if (searchType != null) {
