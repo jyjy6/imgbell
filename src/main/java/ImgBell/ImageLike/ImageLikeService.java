@@ -1,9 +1,6 @@
 package ImgBell.ImageLike;
 
-import ImgBell.Image.Image;
-import ImgBell.Image.ImageDto;
-import ImgBell.Image.ImageRepository;
-import ImgBell.Image.ImageService;
+import ImgBell.Image.*;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +19,7 @@ public class ImageLikeService {
     private final ImageRepository imageRepository;
     private final ImageLikeRepository imageLikeRepository;
     private final ImageService imageService;
+    private final RankingService rankingService;
 
 
     public void likeProduct(Long memberId, Long imageId) {
@@ -41,6 +39,9 @@ public class ImageLikeService {
             // 좋아요 개수 감소
             targetImage.setLikeCount(targetImage.getLikeCount()-1);
 
+            // 이미지 랭킹 점수 업데이트 (좋아요취소 = -5점)
+            rankingService.updateImageScore(imageId, -5);
+
         } else {
             // 좋아요 등록
             System.out.println("좋아용");
@@ -51,6 +52,9 @@ public class ImageLikeService {
             imageLikeRepository.save(like);
             //좋아요 개수 증가
             targetImage.setLikeCount(targetImage.getLikeCount()+1);
+
+            // 이미지 랭킹 점수 업데이트 (좋아요 = 5점)
+            rankingService.updateImageScore(imageId, 5);
 
         }
         imageRepository.save(targetImage);

@@ -9,6 +9,7 @@ import ImgBell.ImageLike.ImageLikeRepository;
 import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
+import ImgBell.Redis.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,11 @@ public class ImageService {
     private final TagRepository tagRepository;
     private final ImageLikeRepository imageLikeRepository;
     private final S3Client s3Client;
+    private final RecentViewService recentViewService;
+    private final RankingService rankingService;
+    private final RedisService redisService;
+    private static final String VIEW_COUNT_KEY = "image:views:";
+    private static final String LIKE_COUNT_KEY = "image:likes:";
 
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -306,13 +312,22 @@ public class ImageService {
      * 단일 이미지 상세 정보를 조회하는 메서드
      */
     @Transactional
-    public ImageDto getImageDetail(Long id, Boolean increaseView) {
+    public ImageDto getImageDetail(Long id, Boolean increaseView, Authentication auth) {
             Image image = imageRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
             // 조회수 증가
             if(increaseView) {
                 image.setViewCount(image.getViewCount() + 1);
+
+                // 이미지 랭킹 점수 업데이트 (조회 = 1점)
+                rankingService.updateImageScore(id, 1);
             }
+            // 로그인 되었으면 최근 본 목록에 추가
+            if(auth != null && auth.isAuthenticated()) {
+                Long userId = ((CustomUserDetails)auth.getPrincipal()).getId();
+                recentViewService.addRecentView(userId, id);
+            }
+
             imageRepository.save(image);
             return convertToRequestDto(image);
     }
@@ -387,6 +402,17 @@ public class ImageService {
     public String extractS3Key(String imageUrl) {
         return imageUrl.substring(imageUrl.indexOf(".com/") + 5);
 
+    }
+
+
+    public Long getViewCount(Long imageId) {
+        Object count = redisService.getValue(VIEW_COUNT_KEY + imageId);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
+    }
+
+    public Long getLikeCount(Long imageId) {
+        Object count = redisService.getValue(LIKE_COUNT_KEY + imageId);
+        return count != null ? Long.valueOf(count.toString()) : 0L;
     }
 
 

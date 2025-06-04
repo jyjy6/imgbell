@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ImageController {
 
+    private final RecentViewService recentViewService;
+    private final RankingService rankingService;
     private final ImageService imageService;
     @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
@@ -84,12 +86,10 @@ public class ImageController {
 
 
 
-
-
 //     * 단일 이미지 상세 정보를 조회합니다.
     @GetMapping("/{id}")
-    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id, @RequestParam Boolean increaseView) {
-        return ResponseEntity.ok(imageService.getImageDetail(id, increaseView));
+    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id, @RequestParam Boolean increaseView, Authentication auth) {
+        return ResponseEntity.ok(imageService.getImageDetail(id, increaseView, auth));
     }
 
     @DeleteMapping("/delete/{id}")
@@ -121,13 +121,28 @@ public class ImageController {
 
 
 
-
-
     @GetMapping("/popular")
     public ResponseEntity<Page<ImageDto>> getPopularImages(
             @PageableDefault(size = 10) Pageable pageable
     ) {
         return ResponseEntity.ok(imageService.getPopularImages(pageable));
+    }
+
+
+    @GetMapping("/recent")
+    public ResponseEntity<List<Long>> getRecentViews(Authentication auth) {
+        Long userId = ((CustomUserDetails)auth.getPrincipal()).getId();
+        List<Long> recentImages = recentViewService.getRecentViews(userId);
+        return ResponseEntity.ok(recentImages);
+    }
+
+    @GetMapping("/ranking")
+    public ResponseEntity<List<Long>> getRanking(
+            @RequestParam(defaultValue = "daily") String period,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        List<Long> topImages = rankingService.getTopImages(period, limit);
+        return ResponseEntity.ok(topImages);
     }
     
 

@@ -48,6 +48,9 @@ dependencies {
 	
 	// 카카오 OAuth를 위한 HTTP 클라이언트 (선택사항)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 }
 
 tasks.named('test') {
