@@ -145,7 +145,33 @@ public class ImageController {
         return ResponseEntity.ok(topImages);
     }
     
+    @GetMapping("/ranking/with-scores")
+    public ResponseEntity<List<RankingService.RankingEntry>> getRankingWithScores(
+            @RequestParam(defaultValue = "daily") String period,
+            @RequestParam(defaultValue = "10") int limit) {
 
+        List<RankingService.RankingEntry> topImages = rankingService.getTopImagesWithScores(period, limit);
+        return ResponseEntity.ok(topImages);
+    }
+    
+    @GetMapping("/ranking/score/{imageId}")
+    public ResponseEntity<Double> getImageScore(
+            @PathVariable Long imageId,
+            @RequestParam(defaultValue = "daily") String period) {
+        
+        Double score = rankingService.getImageScore(imageId, period);
+        return ResponseEntity.ok(score != null ? score : 0.0);
+    }
+    
+    @PostMapping("/download/{imageId}")
+    public ResponseEntity<?> downloadImage(@PathVariable Long imageId) {
+        try {
+            imageService.incrementDownloadCount(imageId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "다운로드가 기록되었습니다."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @Getter
     @Setter

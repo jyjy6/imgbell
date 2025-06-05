@@ -315,20 +315,19 @@ public class ImageService {
     public ImageDto getImageDetail(Long id, Boolean increaseView, Authentication auth) {
             Image image = imageRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+            
             // 조회수 증가
             if(increaseView) {
-                image.setViewCount(image.getViewCount() + 1);
-
-                // 이미지 랭킹 점수 업데이트 (조회 = 1점)
-                rankingService.updateImageScore(id, 1);
+                // ✅ 통합된 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
+                this.incrementViewCount(id);
             }
+            
             // 로그인 되었으면 최근 본 목록에 추가
             if(auth != null && auth.isAuthenticated()) {
                 Long userId = ((CustomUserDetails)auth.getPrincipal()).getId();
                 recentViewService.addRecentView(userId, id);
             }
 
-            imageRepository.save(image);
             return convertToRequestDto(image);
     }
 
@@ -349,8 +348,8 @@ public class ImageService {
                 .imageUrl(image.getImageUrl())
                 .imageName(image.getImageName())
                 .uploaderName(image.getUploader() != null ? image.getUploader().getUsername() : "Unknown")
-                .likeCount(image.getLikeCount())
-                .viewCount(image.getViewCount())
+                .likeCount(this.getLikeCount(image.getId()).intValue())
+                .viewCount(this.getViewCount(image.getId()).intValue())
                 .imageGrade(image.getImageGrade())
                 .isPublic(image.getIsPublic())
                 .build();
@@ -378,9 +377,9 @@ public class ImageService {
         dto.setTags(tagDtos);
         dto.setSource(image.getSource());
         dto.setArtist(image.getArtist());
-        dto.setViewCount(image.getViewCount());
-        dto.setLikeCount(image.getLikeCount());
-        dto.setDownloadCount(image.getDownloadCount());
+        dto.setViewCount(this.getViewCount(image.getId()).intValue());
+        dto.setLikeCount(this.getLikeCount(image.getId()).intValue());
+        dto.setDownloadCount(this.getDownloadCount(image.getId()).intValue());
         dto.setImageGrade(image.getImageGrade());
         dto.setIsPublic(image.getIsPublic());
         dto.setIsApproved(image.getIsApproved());
@@ -406,17 +405,126 @@ public class ImageService {
 
 
     public Long getViewCount(Long imageId) {
-        Object count = redisService.getValue(VIEW_COUNT_KEY + imageId);
-        return count != null ? Long.valueOf(count.toString()) : 0L;
+        // Redis에서 먼저 확인
+        Object cachedCount = redisService.getHashValue("image:stats:" + imageId, "viewCount");
+        if (cachedCount != null) {
+            return Long.valueOf(cachedCount.toString());
+        }
+        
+        // Redis에 없으면 DB에서 가져와서 캐시 설정
+        Image image = imageRepository.findById(imageId).orElse(null);
+        if (image != null) {
+            redisService.setHashValue("image:stats:" + imageId, "viewCount", image.getViewCount());
+            return (long) image.getViewCount();
+        }
+        
+        return 0L;
     }
 
     public Long getLikeCount(Long imageId) {
-        Object count = redisService.getValue(LIKE_COUNT_KEY + imageId);
-        return count != null ? Long.valueOf(count.toString()) : 0L;
+        // Redis에서 먼저 확인
+        Object cachedCount = redisService.getHashValue("image:stats:" + imageId, "likeCount");
+        if (cachedCount != null) {
+            return Long.valueOf(cachedCount.toString());
+        }
+        
+        // Redis에 없으면 DB에서 가져와서 캐시 설정
+        Image image = imageRepository.findById(imageId).orElse(null);
+        if (image != null) {
+            redisService.setHashValue("image:stats:" + imageId, "likeCount", image.getLikeCount());
+            return (long) image.getLikeCount();
+        }
+        
+        return 0L;
     }
 
+    public Long getDownloadCount(Long imageId) {
+        // Redis에서 먼저 확인
+        Object cachedCount = redisService.getHashValue("image:stats:" + imageId, "downloadCount");
+        if (cachedCount != null) {
+            return Long.valueOf(cachedCount.toString());
+        }
+        
+        // Redis에 없으면 DB에서 가져와서 캐시 설정
+        Image image = imageRepository.findById(imageId).orElse(null);
+        if (image != null) {
+            redisService.setHashValue("image:stats:" + imageId, "downloadCount", image.getDownloadCount());
+            return (long) image.getDownloadCount();
+        }
+        
+        return 0L;
+    }
 
-
-
+    /**
+     * 좋아요 수 증가
+     */
+    @Transactional
+    public void incrementLikeCount(Long imageId) {
+        // DB 업데이트
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+        image.setLikeCount(image.getLikeCount() + 1);
+        imageRepository.save(image);
+        
+        // Redis 캐시 업데이트
+        redisService.incrementHashValue("image:stats:" + imageId, "likeCount", 1);
+        
+        // 랭킹 점수 업데이트
+        rankingService.updateLikeScore(imageId);
+    }
+    
+    /**
+     * 좋아요 수 감소 (새로 추가)
+     */
+    @Transactional
+    public void decrementLikeCount(Long imageId) {
+        // DB 업데이트
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+        image.setLikeCount(Math.max(0, image.getLikeCount() - 1)); // 0 미만으로 내려가지 않도록
+        imageRepository.save(image);
+        
+        // Redis 캐시 업데이트
+        redisService.incrementHashValue("image:stats:" + imageId, "likeCount", -1);
+        
+        // 랭킹 점수 업데이트 (감소)
+        rankingService.updateImageScore(imageId, -3); // 좋아요 취소는 -3점
+    }
+    
+    /**
+     * 조회수 증가 (새로 추가)
+     */
+    @Transactional
+    public void incrementViewCount(Long imageId) {
+        // DB 업데이트
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+        image.setViewCount(image.getViewCount() + 1);
+        imageRepository.save(image);
+        
+        // Redis 캐시 업데이트
+        redisService.incrementHashValue("image:stats:" + imageId, "viewCount", 1);
+        
+        // 랭킹 점수 업데이트
+        rankingService.updateViewScore(imageId);
+    }
+    
+    /**
+     * 다운로드 수 증가
+     */
+    @Transactional
+    public void incrementDownloadCount(Long imageId) {
+        // DB 업데이트
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+        image.setDownloadCount(image.getDownloadCount() + 1);
+        imageRepository.save(image);
+        
+        // Redis 캐시 업데이트
+        redisService.incrementHashValue("image:stats:" + imageId, "downloadCount", 1);
+        
+        // 랭킹 점수 업데이트
+        rankingService.updateDownloadScore(imageId);
+    }
 
 }

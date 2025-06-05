@@ -14,13 +14,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ImageLikeService {
 
-
     private final MemberRepository memberRepository;
     private final ImageRepository imageRepository;
     private final ImageLikeRepository imageLikeRepository;
     private final ImageService imageService;
-    private final RankingService rankingService;
-
 
     public void likeProduct(Long memberId, Long imageId) {
         Member member = memberRepository.findById(memberId)
@@ -30,17 +27,14 @@ public class ImageLikeService {
 
         // 중복 좋아요 체크
         Optional<ImageLike> existingLike = imageLikeRepository.findByMemberAndImage(member, image);
-        Image targetImage = imageRepository.findById(imageId).orElseThrow(()->new RuntimeException("그런이미지 없음"));
 
         if (existingLike.isPresent()) {
             // 이미 좋아요 누름 → 취소
             System.out.println("좋아요취소");
             imageLikeRepository.delete(existingLike.get());
-            // 좋아요 개수 감소
-            targetImage.setLikeCount(targetImage.getLikeCount()-1);
-
-            // 이미지 랭킹 점수 업데이트 (좋아요취소 = -5점)
-            rankingService.updateImageScore(imageId, -5);
+            
+            // ✅ ImageService의 통합 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
+            imageService.decrementLikeCount(imageId);
 
         } else {
             // 좋아요 등록
@@ -50,16 +44,14 @@ public class ImageLikeService {
                     .image(image)
                     .build();
             imageLikeRepository.save(like);
-            //좋아요 개수 증가
-            targetImage.setLikeCount(targetImage.getLikeCount()+1);
-
-            // 이미지 랭킹 점수 업데이트 (좋아요 = 5점)
-            rankingService.updateImageScore(imageId, 5);
-
+            
+            // ✅ ImageService의 통합 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
+            imageService.incrementLikeCount(imageId);
         }
-        imageRepository.save(targetImage);
+        
+        // ❌ 불필요한 save 제거 (increment/decrementLikeCount에서 이미 처리함)
+        // imageRepository.save(targetImage);
     }
-
 
     public List<ImageDto> getLikedProducts(Long memberId) {
         Member member = memberRepository.findById(memberId)
@@ -72,5 +64,4 @@ public class ImageLikeService {
                 .map(imageService::convertToLightDto)
                 .collect(Collectors.toList());
     }
-
 }
