@@ -14,6 +14,7 @@ public class ForumResponse {
     private String title;
     private String content;
     private String authorDisplayName;
+    private String authorUsername;
     private String createdAt;
     private Integer viewCount;
     private Integer likeCount;
@@ -27,6 +28,7 @@ public class ForumResponse {
                 .title(forum.getTitle())
                 .content(forum.getContent())  // 전체 내용 포함
                 .authorDisplayName(forum.getAuthorDisplayName())
+                .authorUsername(forum.getAuthorUsername())
                 .createdAt(forum.getCreatedAt().toString())
                 .viewCount(forum.getViewCount())
                 .likeCount(forum.getLikeCount())

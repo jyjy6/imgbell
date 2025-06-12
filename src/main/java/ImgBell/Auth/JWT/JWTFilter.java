@@ -50,6 +50,7 @@ public class JWTFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+
         
         if (pathMatcher.match("/api/oauth/google/call-back", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");

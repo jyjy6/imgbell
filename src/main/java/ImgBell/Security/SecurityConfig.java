@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
                         // 프리미엄 회원 페이지
                         .requestMatchers("/api/premium/**").hasRole("PREMIUM")
+
                         .requestMatchers("/api/oauth/**", "/oauth2/**").permitAll()
                         // 그 외 인증 필요
                         .anyRequest().permitAll()
