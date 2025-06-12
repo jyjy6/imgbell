@@ -1,6 +1,7 @@
 package ImgBell.Member.Dto;
 
 import ImgBell.Member.Member;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Data
 public class MemberDto {
     private Long id;
     private String username;
@@ -31,13 +33,14 @@ public class MemberDto {
     private LocalDateTime lastLogin;
 
 
+    @JsonProperty("isPremium")
     private boolean isPremium;
     private LocalDateTime premiumExpiryDate;
 
     private boolean marketingAccepted;
     private Set<String> roleSet;
 
-    public MemberDto convertToDetailMemberDto(Member member) {
+    public static MemberDto convertToDetailMemberDto(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
                 .username(member.getUsername())

@@ -203,8 +203,6 @@ public class ImageService {
                                        String keyword, String searchType, String grade, Boolean myImageList, Boolean likeImageList, Authentication auth) {
 
         Specification<Image> spec = Specification.where(null);
-
-
         if(myImageList){
             //마이페이지에선 해당 업로더만
             String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
@@ -214,9 +212,7 @@ public class ImageService {
             if( auth == null || !auth.isAuthenticated() || !auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))){
                 spec = spec.and(ImageSpecification.isPublic());
             }
-
         }
-
 
         // 검색 타입에 따른 조건 적용
         if (searchType != null) {
@@ -275,7 +271,6 @@ public class ImageService {
 
         Page<Image> images = imageRepository.findAll(spec, pageable);
 
-
         // Entity -> DTO 변환
         return images.map(this::convertToLightDto);
     }
@@ -315,7 +310,6 @@ public class ImageService {
     public ImageDto getImageDetail(Long id, Boolean increaseView, Authentication auth) {
             Image image = imageRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
-            
             // 조회수 증가
             if(increaseView) {
                 // ✅ 통합된 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
@@ -325,16 +319,11 @@ public class ImageService {
             // 로그인 되었으면 최근 본 목록에 추가
             if(auth != null && auth.isAuthenticated()) {
                 Long userId = ((CustomUserDetails)auth.getPrincipal()).getId();
-                recentViewService.addRecentView(userId, id);
+                recentViewService.addRecentView(userId, id, image.getImageUrl());
             }
 
             return convertToRequestDto(image);
     }
-
-
-
-
-
 
 
 
@@ -486,7 +475,6 @@ public class ImageService {
         
         // Redis 캐시 업데이트
         redisService.incrementHashValue("image:stats:" + imageId, "likeCount", -1);
-        
         // 랭킹 점수 업데이트 (감소)
         rankingService.updateImageScore(imageId, -3); // 좋아요 취소는 -3점
     }

@@ -4,10 +4,15 @@ import ImgBell.Forum.Forum;
 import ImgBell.Forum.ForumRepository;
 import ImgBell.Image.Image;
 import ImgBell.Image.ImageRepository;
+import ImgBell.Member.CustomUserDetails;
+import ImgBell.Member.Dto.MemberDto;
+import ImgBell.Member.Dto.MemberFormDto;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -86,4 +91,23 @@ public class AdminService {
 
         return result;
     }
+
+    @Transactional
+    public MemberDto adminEditUser(MemberFormDto memberDto) {
+        String username = memberDto.getUsername();
+
+
+        Member editTargetMember = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Member not found"));
+        System.out.println(editTargetMember);
+
+        memberDto.adminUpdateMember(editTargetMember);
+        // 사용자 저장
+        memberRepository.save(editTargetMember);
+
+        // 갱신된 사용자 정보 return
+        MemberDto memberdto = new MemberDto();
+        return memberdto.convertToDetailMemberDto(editTargetMember);
+    }
+
 }

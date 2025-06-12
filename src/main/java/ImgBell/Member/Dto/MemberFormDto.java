@@ -3,6 +3,8 @@ package ImgBell.Member.Dto;
 import ImgBell.Member.Member;
 import lombok.*;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,6 +23,7 @@ public class MemberFormDto {
     private String country;
     private String mainAddress;
     private String subAddress;
+    private Set<String> roleSet;
     private boolean privacyAccepted;
     private boolean termsAccepted;
     private boolean marketingAccepted;
@@ -52,6 +55,22 @@ public class MemberFormDto {
         member.setPhone(this.phone);
         member.setSex(this.sex);
         member.setAge(this.age);
+        member.setProfileImage(this.profileImage);
+        member.setCountry(this.country);
+        member.setMainAddress(this.mainAddress);
+        member.setSubAddress(this.subAddress);
+        member.setMarketingAccepted(this.marketingAccepted);
+        // password는 따로 처리하므로 여기선 제외
+    }
+
+    public void adminUpdateMember(Member member) {
+        member.setName(this.name);
+        member.setDisplayName(this.displayName);
+        member.setEmail(this.email);
+        member.setPhone(this.phone);
+        member.setSex(this.sex);
+        member.setAge(this.age);
+        member.setRoles(this.roleSet);
         member.setProfileImage(this.profileImage);
         member.setCountry(this.country);
         member.setMainAddress(this.mainAddress);

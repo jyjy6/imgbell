@@ -5,6 +5,8 @@ package ImgBell.Member;
 import ImgBell.Member.Dto.MemberDto;
 import ImgBell.Member.Dto.MemberFormDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -54,14 +56,14 @@ public class MemberService {
 
     @Transactional
     public MemberDto editUser(MemberFormDto memberDto, Authentication auth) {
-        String username = (String)auth.getPrincipal();
+        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
         if(!username.equals(memberDto.getUsername())){
             throw new IllegalArgumentException("아이디는 수정할 수 없습니다.");
         }
 
         Member editTargetMember = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
-
+        System.out.println(editTargetMember);
 
         // 비밀번호도 바꿨으면 설정
         if (memberDto.getPassword() != null && !memberDto.getPassword().isEmpty()) {
@@ -70,7 +72,6 @@ public class MemberService {
             editTargetMember.setPassword(editTargetMember.getPassword());
         }
 
-        System.out.println("에딧확인3");
         memberDto.updateMember(editTargetMember);
         // 사용자 저장
         memberRepository.save(editTargetMember);
@@ -94,6 +95,16 @@ public class MemberService {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid password");
         }
 
+    }
+
+    public Page<Member> getMembers(String search, Pageable pageable) {
+        if (search != null && !search.trim().isEmpty()) {
+            // 이름, 사용자명, 이메일로 검색
+            return memberRepository.findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                    search, search, search, pageable);
+        }
+
+        return memberRepository.findAll(pageable);
     }
 
 

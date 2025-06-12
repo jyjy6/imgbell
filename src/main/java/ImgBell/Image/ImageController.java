@@ -88,7 +88,7 @@ public class ImageController {
 
 //     * 단일 이미지 상세 정보를 조회합니다.
     @GetMapping("/{id}")
-    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id, @RequestParam Boolean increaseView, Authentication auth) {
+    public ResponseEntity<ImageDto> getImageDetail(@PathVariable Long id, @RequestParam(defaultValue = "false") Boolean increaseView, Authentication auth) {
         return ResponseEntity.ok(imageService.getImageDetail(id, increaseView, auth));
     }
 
@@ -130,11 +130,17 @@ public class ImageController {
 
 
     @GetMapping("/recent")
-    public ResponseEntity<List<Long>> getRecentViews(Authentication auth) {
-        Long userId = ((CustomUserDetails)auth.getPrincipal()).getId();
-        List<Long> recentImages = recentViewService.getRecentViews(userId);
-        return ResponseEntity.ok(recentImages);
+    public ResponseEntity<?> getRecentViews(Authentication auth) {
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof CustomUserDetails) {
+            Long userId = ((CustomUserDetails) auth.getPrincipal()).getId();
+            List<RecentViewItem> recentImages = recentViewService.getRecentViews(userId);
+            return ResponseEntity.ok(recentImages);
+        }
+
+        // 로그인 안 된 경우 아무 동작 안 함 (204 No Content or 401 Unauthorized 등 선택 가능)
+        return ResponseEntity.noContent().build();
     }
+
 
     @GetMapping("/ranking")
     public ResponseEntity<List<Long>> getRanking(

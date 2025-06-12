@@ -1,5 +1,7 @@
 package ImgBell.Member;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -17,4 +19,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     List<Member> findTop5ByOrderByCreatedAtDesc();
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    Page<Member> findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            String name, String username, String email, Pageable pageable);
 }
