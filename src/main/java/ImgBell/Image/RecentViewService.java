@@ -3,6 +3,7 @@ package ImgBell.Image;
 import ImgBell.Redis.RedisService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -133,10 +134,14 @@ public class RecentViewService {
 }
 
 
+@Schema(description = "최근 본 이미지 정보")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 class RecentViewItem {
+    @Schema(description = "이미지 ID", example = "1")
     private Long imageId;
+    
+    @Schema(description = "이미지 URL", example = "https://bucket.s3.amazonaws.com/images/uuid_image.jpg")
     private String imageUrl;
 }
