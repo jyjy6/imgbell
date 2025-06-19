@@ -2,6 +2,8 @@ package ImgBell.Auth.JWT;
 
 
 import ImgBell.Member.CustomUserDetailsService;
+import ImgBell.Member.Member;
+import ImgBell.Member.MemberRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,18 +15,21 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 
 @RestController
-@RequestMapping("/api")
+
 @RequiredArgsConstructor // Lombok을 사용하여 생성자 주입
 public class JWTController {
 
-    private final CustomUserDetailsService customUserDetailsService;
+    private final PasswordEncoder passwordEncoder;
+    private final MemberRepository memberRepository;
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
     @Value("${app.production}")
@@ -36,9 +41,11 @@ public class JWTController {
 
 
 
-    @PostMapping("/login/jwt")
+    @PostMapping("/api/login/jwt")
     public ResponseEntity<Map<String, String>> loginJWT(@RequestBody Map<String, String> data, HttpServletResponse response) {
         try {
+
+
             var authToken = new UsernamePasswordAuthenticationToken(
                     data.get("username"), data.get("password")
             );
@@ -73,7 +80,55 @@ public class JWTController {
         }
     }
 
-    @GetMapping("/refresh-token")
+    @PostMapping("/api/login/guest")
+    public ResponseEntity<Map<String, String>> guestLoginJWT(HttpServletResponse response) {
+        try {
+            String guestMemberCode = "GUEST" + UUID.randomUUID().toString().substring(0, 8);
+            String guestPassword = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            Member guestMember = new Member();
+            guestMember.addRole("ROLE_GUEST");
+            guestMember.addRole("ROLE_USER");
+            guestMember.setPassword(passwordEncoder.encode(guestPassword));
+            guestMember.setEmail("guest@guest.guest");
+            guestMember.setName(guestMemberCode);
+            guestMember.setUsername(guestMemberCode);
+            guestMember.setDisplayName(guestMemberCode);
+            memberRepository.save(guestMember);
+
+            var authToken = new UsernamePasswordAuthenticationToken(
+                    guestMemberCode, guestPassword
+            );
+
+            // AuthenticationManager를 사용하여 인증 수행
+            Authentication auth = authenticationManager.authenticate(authToken);
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
+            // 인증된 사용자 정보 가져오기
+            var auth2 = SecurityContextHolder.getContext().getAuthentication();
+
+            // JWT 생성
+            String accessToken = jwtUtil.createAccessToken(auth2);
+            String refreshToken = jwtUtil.createRefreshToken(auth2.getName());
+
+            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+            refreshCookie.setMaxAge(60 * 60 * 24 * 7); // 30일
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(isProduction); // HTTPS인 경우 true
+            refreshCookie.setPath("/");
+            refreshCookie.setDomain(isProduction ? cookieDomain : null); // 도메인 설정
+            response.addCookie(refreshCookie);
+
+            // 응답 바디 구성
+            Map<String, String> responseBody = new HashMap<>();
+            responseBody.put("accessToken", accessToken);
+
+            return ResponseEntity.ok(responseBody);
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "로그인 실패: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/api/refresh-token")
     public ResponseEntity<Map<String, String>> refresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
         System.out.println("새 액세스 토큰 요청됨");
 
@@ -108,7 +163,7 @@ public class JWTController {
 
 
 
-    @PostMapping("/logout")
+    @PostMapping("/api/logout")
     public ResponseEntity<String> logout(HttpServletResponse response) {
         System.out.println("로그아웃요청됨");
 

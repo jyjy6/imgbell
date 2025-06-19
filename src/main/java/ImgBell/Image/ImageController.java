@@ -384,6 +384,52 @@ public class ImageController {
         }
     }
 
+
+
+    @Operation(summary = "이미지 AI 캐릭터 성격으로 분석", description = "이미지 URL을 받아서 AI로 캐릭터말투로 태그 생성 및 품질 분석")
+    @ApiResponse(responseCode = "200", description = "분석 성공")
+    @PostMapping("/ai/char/analyze/")
+    public ResponseEntity<ImageAIService.ImageCharAnalysisResult> charAnalyzeImageByUrl(@RequestBody Map<String, String> request) {
+        try {
+            String imageUrl = request.get("imageUrl");
+            if (imageUrl == null || imageUrl.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            ImageAIService.ImageCharAnalysisResult result = imageAIService.charAnalyzeImage(imageUrl);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("이미지 AI 분석 실패", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Operation(summary = "이미지 파일 AI 캐릭터 성격으로 분석", description = "업로드된 이미지 파일을 직접 받아서 AI로 캐릭터 말투로 분석")
+    @ApiResponse(responseCode = "200", description = "분석 성공")
+    @PostMapping("/ai/char/analyze/file")
+    public ResponseEntity<ImageAIService.ImageCharAnalysisResult> charAnalyzeImageByFile(
+            @RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            // 이미지 파일 검증
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().build();
+            }
+            ImageAIService.ImageCharAnalysisResult result = imageAIService.charAnalyzeImageFile(file);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("이미지 파일 AI 분석 실패", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+
+
+
+
     @Schema(description = "Presigned URL 응답")
     @Getter
     @Setter

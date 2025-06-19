@@ -44,6 +44,7 @@ public class ImageAIService {
                 .build();
     }
 
+//    이미지 업로드 분석ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
     /**
      * 이미지 URL로부터 자동 태그 생성 (Google Gemini API 사용)
      */
@@ -172,13 +173,138 @@ public class ImageAIService {
 
             String responseBody = responseMono.block();
             log.info("Gemini API 응답 성공");
-            
             // 응답 파싱
             return parseGeminiResponse(responseBody);
-
         } catch (Exception e) {
             log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
             return createErrorResult("AI 분석 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+
+
+//    캐릭터별 이미지 분석 ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+    public ImageCharAnalysisResult charAnalyzeImage(String imageUrl) {
+        try {
+            log.info("Google Gemini API로 캐릭터가 이미지 분석 시작: {}", imageUrl);
+
+            // 이미지 다운로드 및 base64 인코딩
+            String base64Image = downloadAndEncodeImage(imageUrl);
+            if (base64Image == null) {
+                return createCharErrorResult("이미지 다운로드 실패");
+            }
+
+            // 기본 분석 수행
+            ImageCharAnalysisResult result = characterDetailAnalyze(base64Image);
+
+            // TODO: 필요시 인물 식별 추가 분석
+            // if (needsPersonIdentification(result)) {
+            //     result = enhanceWithPersonIdentification(base64Image, result);
+            // }
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
+            return createCharErrorResult("AI 분석 중 오류 발생: " + e.getMessage());
+        }
+    }
+    /**
+     * 업로드된 이미지 파일을 직접 분석 캐릭(Google Gemini API 사용)
+     */
+    public ImageCharAnalysisResult charAnalyzeImageFile(MultipartFile file) {
+        try {
+            log.info("업로드된 파일로 캐릭터가 이미지 분석 시작: {}", file.getOriginalFilename());
+
+            // 파일을 base64로 인코딩
+            String base64Image = encodeFileToBase64(file);
+            if (base64Image == null) {
+                return createCharErrorResult("파일 인코딩 실패");
+            }
+
+            // 분석 수행
+            return characterDetailAnalyze(base64Image);
+
+        } catch (Exception e) {
+            log.error("파일 분석 실패: {}", e.getMessage(), e);
+            return createCharErrorResult("파일 분석 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+
+    private ImageCharAnalysisResult characterDetailAnalyze(String base64Image) {
+        try {
+            log.info("Gemini API로 상세 분석 수행");
+
+            // Gemini API 요청 구성
+            GeminiRequest request = new GeminiRequest();
+
+            // 프롬프트와 이미지 설정
+            GeminiContent content = new GeminiContent();
+            content.setParts(Arrays.asList(
+                    new GeminiPart("text", "제공되는 이미지를보고 답변자가 마샬 D 티치(검은수염)이라고 생각하고 상세하게 분석하여 다음 JSON 형태로만 반환하세요:\n\n" +
+                            "{\n" +
+                            "  \"tags\": [\"상세한 한국어 태그 7-10개\"],\n" +
+                            "  \"imageAnalyze\": 여기에 원피스의 \"마샬 D 티치(검은수염)\"가 대답하는이 작성해주세요 ,\n" +
+                            "}\n\n" +
+                            "**상세 분석 기준:**\n" +
+                            "- tags: 다음 요소들을 포함한 구체적인 한국어 키워드 (7-10개)\n" +
+                            "  * 인물 정보: 성별, 연령대, 직업, 유명인이라면 이름이나 별명\n" +
+                            "  * 신체적 특징: 체형, 헤어스타일, 의상, 액세서리\n" +
+                            "  * 행동/포즈: 구체적인 동작, 표정, 자세\n" +
+                            "  * 배경/환경: 장소, 분위기, 조명, 색상\n" +
+                            "  * 스타일/장르: 사진 스타일, 촬영 기법\n" +
+                            "  * 스포츠/직업: 종목, 리그, 팀, 타이틀, 성과\n" +
+                            "- imageAnalyze: 답변하는 사람이 만화 \"원피스\"의 \"마샬 D 티치(검은수염)\"라고 생각하고 제공된 이미지를 본 감상을 써주세요 만약 제공된 이미지에 원피스 등장인물이 있으면 그 관계성도 생각해도 되고, 그게 아니라면 현실 세계관에 적용해서 마샬 D 티치(검은수염)의 말투로 말해주면 됩니다. 예를들어 원피스의 \"흰수염\" 이미지 라면 원피스 세계 최강의사나이면서 골드로저의 라이벌이다, \"리오넬 메시 라면\" 제하하하하!! 상당히 축구를 잘한다더군!! 이런식으로\n\n, 유명인/가상인물이라면 반드시 이름을 언급해주세요" +
+                            " \"검은수염 마샬 D. 티치\"의 말투는 투박하고 시끄럽고, 웃음이 많은 해적 스타일. \"제하하하하\"가 트레이드마크인 웃음소리. 항상 운명, 야망, 자유 같은 걸 강조. \n" +
+                            "말투예시 : “제하하하! 인간의 꿈은 끝나지 않아!!” 녀석들이 말하는 '새 시대'란 건 엿 같은 얘기다. 해적이 꿈을 꾸는 시대가 끝난다고···?!! 응?!! 어이!!! 크하하하하하하하!!!\n" +
+                            "\n" +
+                            "사람의 꿈은!!! 끝나지 않아!!!! 그렇지?!!, 집어쳐. 정의나 악을 입에 올리는 건!! ···이 세상 어디를 뒤져봐도, 답은 없잖나. 너절하긴!!!\n"+
+                            "그래, 헛수고라는 말은 않겠다. 이 세상에 불가능한 일이란 무엇 하나도 없으니 말이다. ──하늘섬은 있었지? 최고의 보물 '원피스'도 마찬가지!! 반드시 존재한다!!!!"+
+                            "\n"+
+                            "유명인, 가상인물이라면 이름을 포함하고 아닐 확률이 매우 높을시에만 직업이나 특징으로 대체하세요.\n" +
+                            "JSON만 반환하고 다른 설명은 하지 마세요."),
+                    createImagePart(base64Image, "image/jpeg") // base64 이미지 데이터 사용
+            ));
+
+
+            request.setContents(List.of(content));
+
+            // 일관성을 위한 설정 추가
+            Map<String, Object> generationConfig = new HashMap<>();
+            generationConfig.put("temperature", 0.4); // 창의성과 일관성의 균형
+            generationConfig.put("candidateCount", 1);
+            generationConfig.put("maxOutputTokens", 500); // 더 상세한 분석을 위해 증가
+            request.setGenerationConfig(generationConfig);
+
+            // API 호출
+            log.info("Gemini API 캐릭 요청 전송");
+
+            Mono<String> responseMono = webClient.post()
+                    .uri("/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey)
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(status -> status.is4xxClientError(),
+                            clientResponse -> {
+                                log.error("4xx 클라이언트 오류2: {}", clientResponse.statusCode());
+                                return clientResponse.bodyToMono(String.class)
+                                        .map(body -> new RuntimeException("Gemini API 클라이언트 오류: " + body));
+                            })
+                    .onStatus(status -> status.is5xxServerError(),
+                            serverResponse -> {
+                                log.error("5xx 서버 오류2: {}", serverResponse.statusCode());
+                                return serverResponse.bodyToMono(String.class)
+                                        .map(body -> new RuntimeException("Gemini API 서버 오류: " + body));
+                            })
+                    .bodyToMono(String.class);
+
+            String responseBody = responseMono.block();
+            log.info("Gemini API 캐릭 응답 성공");
+            // 응답 파싱
+            return parseGeminiCharResponse(responseBody);
+        } catch (Exception e) {
+            log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
+            return createCharErrorResult("AI 분석 중 오류 발생: " + e.getMessage());
         }
     }
 
@@ -233,6 +359,51 @@ public class ImageAIService {
         }
     }
 
+    private ImageCharAnalysisResult parseGeminiCharResponse(String responseBody) {
+        try {
+            log.info("Gemini 응답 파싱 시작");
+
+            Map<String, Object> response = objectMapper.readValue(responseBody, Map.class);
+            List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
+
+            if (candidates == null || candidates.isEmpty()) {
+                return createCharErrorResult("Gemini AI 응답이 비어있습니다.");
+            }
+
+            Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+            List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+            String text = (String) parts.get(0).get("text");
+
+            log.info("Gemini 응답 텍스트: {}", text);
+
+            // JSON 부분만 추출 (```json과 ``` 제거)
+            String jsonText = text.trim();
+            if (jsonText.startsWith("```json")) {
+                jsonText = jsonText.substring(7);
+            }
+            if (jsonText.startsWith("```")) {
+                jsonText = jsonText.substring(3);
+            }
+            if (jsonText.endsWith("```")) {
+                jsonText = jsonText.substring(0, jsonText.length() - 3);
+            }
+            jsonText = jsonText.trim();
+
+            // JSON 파싱
+            Map<String, Object> aiResult = objectMapper.readValue(jsonText, Map.class);
+
+            return ImageCharAnalysisResult.builder()
+                    .tags((List<String>) aiResult.getOrDefault("tags", new ArrayList<>()))
+                    .imageAnalyze((String) aiResult.getOrDefault("imageAnalyze", "캐릭터"))
+                    .success(true)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Gemini 캐릭 응답 파싱 실패: {}", e.getMessage());
+            return createCharErrorResult("AI 응답 파싱 중 오류 발생: " + e.getMessage());
+        }
+    }
+
     /**
      * 오류 결과 생성
      */
@@ -243,6 +414,15 @@ public class ImageAIService {
                 .isAppropriate(true)
                 .qualityScore(0.5)
                 .confidence(0.0)
+                .success(false)
+                .errorMessage(message)
+                .build();
+    }
+
+    private ImageCharAnalysisResult createCharErrorResult(String message) {
+        return ImageCharAnalysisResult.builder()
+                .tags(new ArrayList<>())
+                .imageAnalyze("실패")
                 .success(false)
                 .errorMessage(message)
                 .build();
@@ -398,6 +578,28 @@ public class ImageAIService {
         @Schema(description = "분석 성공 여부", example = "true")
         private boolean success;
         
+        @Schema(description = "오류 메시지 (실패시)")
+        private String errorMessage;
+    }
+
+    /**
+     * AI 분석 결과 DTO
+     */
+    @Schema(description = "이미지 캐릭AI 분석 결과")
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @lombok.Builder
+    public static class ImageCharAnalysisResult {
+        @Schema(description = "추출된 태그 목록", example = "[\"자연\", \"산\", \"하늘\"]")
+        private List<String> tags;
+
+        @Schema(description = "분석 성공 여부", example = "true")
+        private boolean success;
+
+        @Schema(description = "캐릭터의 이미지 분석", example = "제하하하하! 골드 로저는 해적왕이지")
+        private String imageAnalyze;
+
         @Schema(description = "오류 메시지 (실패시)")
         private String errorMessage;
     }
