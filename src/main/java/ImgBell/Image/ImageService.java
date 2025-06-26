@@ -2,6 +2,7 @@ package ImgBell.Image;
 
 import ImgBell.Image.Comment.Comment;
 import ImgBell.Image.Comment.CommentDto;
+import ImgBell.Image.ElasticSearch.ImageSyncService;
 import ImgBell.Image.Tag.Tag;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
@@ -48,6 +49,7 @@ public class ImageService {
     private final RecentViewService recentViewService;
     private final RankingService rankingService;
     private final RedisService redisService;
+    private final ImageSyncService imageSyncService;
     private static final String VIEW_COUNT_KEY = "image:views:";
     private static final String LIKE_COUNT_KEY = "image:likes:";
 
@@ -112,7 +114,14 @@ public class ImageService {
                 }
                 image.setTags(tagEntities);
 
-                imageRepository.save(image);
+                Image savedImage = imageRepository.save(image);
+                
+                // 🔄 ElasticSearch 동기화
+                try {
+                    imageSyncService.syncSingleImage(savedImage.getId());
+                } catch (Exception syncError) {
+                    System.out.println("ElasticSearch 동기화 실패: " + syncError.getMessage());
+                }
             } catch (Exception e) {
                 System.out.println("이미지 저장 오류남: " + e.getMessage());
             }
@@ -165,6 +174,14 @@ public class ImageService {
         }
 
         imageRepository.delete(deleteTargetImage);
+        
+        // 🗑️ ElasticSearch에서도 삭제
+        try {
+            imageSyncService.deleteFromIndex(id);
+        } catch (Exception syncError) {
+            System.out.println("ElasticSearch 삭제 동기화 실패: " + syncError.getMessage());
+        }
+        
         return ResponseEntity.ok().body("이미지가 성공적으로 삭제되었습니다");
     }
 
@@ -191,6 +208,13 @@ public class ImageService {
         imageRepository.save(targetImage);
 
         Image savedImage = imageRepository.save(targetImage);
+
+        // 🔄 ElasticSearch 동기화
+        try {
+            imageSyncService.syncSingleImage(savedImage.getId());
+        } catch (Exception syncError) {
+            System.out.println("ElasticSearch 업데이트 동기화 실패: " + syncError.getMessage());
+        }
 
         // Entity를 DTO로 변환
         ImageDto responseDto = convertToRequestDto(savedImage);

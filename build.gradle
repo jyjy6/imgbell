@@ -65,6 +65,11 @@ dependencies {
 	// Google Gemini API (무료!)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+	// 🔥 현업용 Elasticsearch 의존성 (Spring Boot 3.x 호환)
+	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+	implementation 'co.elastic.clients:elasticsearch-java:8.11.0'
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+
 }
 
 tasks.named('test') {

@@ -24,6 +24,12 @@ public interface ImageRepository extends JpaRepository<Image, Long>, JpaSpecific
     Page<Image> findByTagName(@Param("tagName") String tagName, Pageable pageable);
 
     /**
+     * 태그 ID로 이미지 조회 (ElasticSearch 동기화용)
+     */
+    @Query("SELECT i FROM Image i JOIN i.tags t WHERE t.id = :tagId")
+    List<Image> findByTagsId(@Param("tagId") Long tagId);
+
+    /**
      * 등급으로 이미지 필터링
      */
     Page<Image> findByImageGrade(Image.ImageGrade imageGrade, Pageable pageable);

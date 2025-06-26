@@ -1,5 +1,6 @@
 package ImgBell.Image;
 
+import ImgBell.Image.ElasticSearch.ImageSearchService;
 import ImgBell.Member.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -443,7 +444,12 @@ public class ImageController {
 
         // 생성자, getter, setter
     }
+
+
+
 }
+
+
 
 //페이지네이션할때 뭐 권장되는 방식이라곤 하는데 필요없음 딱히
 @AllArgsConstructor
