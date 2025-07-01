@@ -1,6 +1,7 @@
 package ImgBell.Config;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -19,6 +20,13 @@ import java.time.Duration;
 @Configuration
 @EnableRedisRepositories
 public class RedisConfig {
+
+    @Value("${spring.data.redis.host}")
+    private String redisHost;
+
+    @Value("${spring.data.redis.port}")
+    private Integer redisPort;
+
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
@@ -42,8 +50,8 @@ public class RedisConfig {
 
 
         // 기본 설정으로 간단하게 구성
-        LettuceConnectionFactory factory = new LettuceConnectionFactory("localhost", 6379);
-        factory.setValidateConnection(true);
+            LettuceConnectionFactory factory = new LettuceConnectionFactory(redisHost, redisPort);
+            factory.setValidateConnection(true);
         return factory;
     }
 
