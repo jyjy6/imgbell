@@ -16,7 +16,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script: |
-            cd /home/ubuntu/ImgBellProject/ImgBell
+            cd /home/ubuntu/ImgBellProject/imgbell
 
             # Git 업데이트
             git pull origin main || git pull origin master
@@ -26,10 +26,10 @@ jobs:
 
             # 백엔드 서비스 재시작
             cd /home/ubuntu/ImgBellProject
-            docker-compose stop backend
-            docker-compose rm -f backend
-            docker-compose build backend
-            docker-compose up -d backend
+            sudo docker-compose stop backend
+            sudo docker-compose rm -f backend
+            sudo docker-compose build backend
+            sudo docker-compose up -d backend
 
             # 불필요한 이미지 정리
-            docker system prune -f
+            sudo docker system prune -f
