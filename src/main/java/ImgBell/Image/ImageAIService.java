@@ -1,15 +1,19 @@
 package ImgBell.Image;
 
+
+import ImgBell.GlobalErrorHandler.GlobalException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.multipart.MultipartFile;
@@ -161,13 +165,13 @@ public class ImageAIService {
                         clientResponse -> {
                             log.error("4xx 클라이언트 오류: {}", clientResponse.statusCode());
                             return clientResponse.bodyToMono(String.class)
-                                .map(body -> new RuntimeException("Gemini API 클라이언트 오류: " + body));
+                                .map(body -> new GlobalException("Gemini API 클라이언트 오류: " + body, "GEMINI_CLIENT_ERROR", HttpStatus.BAD_REQUEST));
                         })
                     .onStatus(status -> status.is5xxServerError(),
                         serverResponse -> {
                             log.error("5xx 서버 오류: {}", serverResponse.statusCode());
                             return serverResponse.bodyToMono(String.class)
-                                .map(body -> new RuntimeException("Gemini API 서버 오류: " + body));
+                                .map(body -> new GlobalException("Gemini API 서버 오류: " + body, "GEMINI_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR));
                         })
                     .bodyToMono(String.class);
 
@@ -257,7 +261,7 @@ public class ImageAIService {
                             "  * 스포츠/직업: 종목, 리그, 팀, 타이틀, 성과\n" +
                             "- imageAnalyze: 답변하는 사람이 만화 \"원피스\"의 \"마샬 D 티치(검은수염)\"라고 생각하고 제공된 이미지를 본 감상을 써주세요 만약 제공된 이미지에 원피스 등장인물이 있으면 그 관계성도 생각해도 되고, 그게 아니라면 현실 세계관에 적용해서 마샬 D 티치(검은수염)의 말투로 말해주면 됩니다. 예를들어 원피스의 \"흰수염\" 이미지 라면 원피스 세계 최강의사나이면서 골드로저의 라이벌이다, \"리오넬 메시 라면\" 제하하하하!! 상당히 축구를 잘한다더군!! 이런식으로\n\n, 유명인/가상인물이라면 반드시 이름을 언급해주세요" +
                             " \"검은수염 마샬 D. 티치\"의 말투는 투박하고 시끄럽고, 웃음이 많은 해적 스타일. \"제하하하하\"가 트레이드마크인 웃음소리. 항상 운명, 야망, 자유 같은 걸 강조. \n" +
-                            "말투예시 : “제하하하! 인간의 꿈은 끝나지 않아!!” 녀석들이 말하는 '새 시대'란 건 엿 같은 얘기다. 해적이 꿈을 꾸는 시대가 끝난다고···?!! 응?!! 어이!!! 크하하하하하하하!!!\n" +
+                            "말투예시 : \"제하하하! 인간의 꿈은 끝나지 않아!!\" 녀석들이 말하는 '새 시대'란 건 엿 같은 얘기다. 해적이 꿈을 꾸는 시대가 끝난다고···?!! 응?!! 어이!!! 크하하하하하하하!!!\n" +
                             "\n" +
                             "사람의 꿈은!!! 끝나지 않아!!!! 그렇지?!!, 집어쳐. 정의나 악을 입에 올리는 건!! ···이 세상 어디를 뒤져봐도, 답은 없잖나. 너절하긴!!!\n"+
                             "그래, 헛수고라는 말은 않겠다. 이 세상에 불가능한 일이란 무엇 하나도 없으니 말이다. ──하늘섬은 있었지? 최고의 보물 '원피스'도 마찬가지!! 반드시 존재한다!!!!"+
@@ -288,13 +292,13 @@ public class ImageAIService {
                             clientResponse -> {
                                 log.error("4xx 클라이언트 오류2: {}", clientResponse.statusCode());
                                 return clientResponse.bodyToMono(String.class)
-                                        .map(body -> new RuntimeException("Gemini API 클라이언트 오류: " + body));
+                                        .map(body -> new GlobalException("Gemini API 클라이언트 오류: " + body, "GEMINI_CLIENT_ERROR", HttpStatus.BAD_REQUEST));
                             })
                     .onStatus(status -> status.is5xxServerError(),
                             serverResponse -> {
                                 log.error("5xx 서버 오류2: {}", serverResponse.statusCode());
                                 return serverResponse.bodyToMono(String.class)
-                                        .map(body -> new RuntimeException("Gemini API 서버 오류: " + body));
+                                        .map(body -> new GlobalException("Gemini API 서버 오류: " + body, "GEMINI_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR));
                             })
                     .bodyToMono(String.class);
 

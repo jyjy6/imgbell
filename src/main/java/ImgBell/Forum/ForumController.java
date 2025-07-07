@@ -1,8 +1,8 @@
 package ImgBell.Forum;
 
-
 import ImgBell.Forum.ForumComment.ForumComment;
 import ImgBell.Forum.ForumComment.ForumCommentDto;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,8 +31,6 @@ public class ForumController {
         forumService.postForum(forumDto, auth);
         return ResponseEntity.ok("Post created");
     }
-
-
 
     @GetMapping("/list")
     public Page<ForumResponse> getForumNoticeList(
@@ -66,18 +64,18 @@ public class ForumController {
 
     @PutMapping("/view/{id}")
     public void countView(@PathVariable Long id){
-        Forum forum = forumRepository.findById(id).orElseThrow(()-> new RuntimeException("이상한 게시글임"));
+        Forum forum = forumRepository.findById(id)
+                .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
         forum.increaseViews();
         forumRepository.save(forum);
     }
-
 
     @PutMapping("/{id}")
     public ResponseEntity<?> deleteForum(@PathVariable("id") Long id) {
         try {
             // 게시글 존재 여부 확인
             Forum forum = forumRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("해당 게시글을 찾을 수 없습니다. ID: " + id));
+                    .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
 
             // 이미 삭제된 게시글인지 확인
             if (forum.getIsDeleted()) {
@@ -97,7 +95,7 @@ public class ForumController {
                             "deletedId", id
                     ));
 
-        } catch (RuntimeException e) {
+        } catch (GlobalException e) {
             // 비즈니스 로직 관련 예외 (게시글 없음 등)
             return ResponseEntity.notFound().build();
 
@@ -123,5 +121,4 @@ public class ForumController {
         return forumService.searchForums(keyword, 
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")));
     }
-
 }

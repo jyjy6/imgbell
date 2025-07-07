@@ -15,11 +15,13 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
+          command_timeout: 30m
           script: |
             cd /home/ubuntu/ImgBellProject/imgbell
 
-            # Git 업데이트
-            git pull origin main || git pull origin master
+            # Git 업데이트 (로컬 변경사항 무시하고 강제 업데이트)
+            git fetch origin
+            git reset --hard origin/main || git reset --hard origin/master
 
             # Gradle 빌드 권한 설정
             chmod +x ./gradlew
@@ -30,6 +32,3 @@ jobs:
             sudo docker-compose rm -f backend
             sudo docker-compose build backend
             sudo docker-compose up -d backend
-
-            # 불필요한 이미지 정리
-            sudo docker system prune -f

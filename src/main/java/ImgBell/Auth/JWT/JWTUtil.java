@@ -4,6 +4,7 @@ import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.CustomUserDetailsService;
 import ImgBell.Member.Member;
 import ImgBell.Member.Dto.MemberDto;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -16,6 +17,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +28,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 
 @RequiredArgsConstructor
 @Component
@@ -67,7 +68,7 @@ public class JWTUtil {
         try {
             memberJson = objectMapper.writeValueAsString(memberDto);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error while converting MemberDto to JSON", e);
+            throw new GlobalException("사용자 정보를 JSON으로 변환하는 중 오류가 발생했습니다", "JSON_CONVERSION_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         return Jwts.builder()
@@ -110,7 +111,7 @@ public class JWTUtil {
         try {
             userInfoJson = objectMapper.writeValueAsString(memberDto);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error while converting MemberDto to JSON", e);
+            throw new GlobalException("사용자 정보를 JSON으로 변환하는 중 오류가 발생했습니다", "JSON_CONVERSION_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         return Jwts.builder()
@@ -121,7 +122,6 @@ public class JWTUtil {
                 .signWith(key)
                 .compact();
     }
-
 
     public String createRefreshToken(String username) {
         return Jwts.builder()
@@ -138,7 +138,6 @@ public class JWTUtil {
                 .parseSignedClaims(token).getPayload();
         return claims;
     }
-
 
     //JWT 토큰에서 클레임(Claims)을 추출하는 기능을 수행
     public Claims extractClaims(String token) {
@@ -163,11 +162,8 @@ public class JWTUtil {
         }
     }
 
-
     //이 메서드는 JWT 토큰에서 사용자 이름을 추출하는 기능을 수행
     public String extractUsername(String token) {
         return extractClaims(token).getSubject();
     }
-
-
 }

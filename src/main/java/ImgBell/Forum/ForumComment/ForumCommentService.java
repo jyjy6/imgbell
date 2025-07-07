@@ -1,12 +1,13 @@
 package ImgBell.Forum.ForumComment;
 
-
 import ImgBell.Forum.Forum;
 import ImgBell.Forum.ForumDto;
 import ImgBell.Forum.ForumRepository;
 import ImgBell.Member.CustomUserDetails;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,10 +31,13 @@ public class ForumCommentService {
         comment.setContent(dto.getContent());
         comment.setAuthorDisplayName(authorDisplayName);
         comment.setAuthorUsername(authorUsername);
-        Forum forum = forumRepository.findById(dto.getForumId()).orElseThrow(()-> new RuntimeException("그런거없음"));
+        Forum forum = forumRepository.findById(dto.getForumId())
+                .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
         comment.setForum(forum);
+        
         if(dto.getParentId() != null){
-            ForumComment parentsComment = forumCommentRepository.findById(dto.getParentId()).orElseThrow(()-> new RuntimeException("그런 댓글 없음"));
+            ForumComment parentsComment = forumCommentRepository.findById(dto.getParentId())
+                    .orElseThrow(() -> new GlobalException("부모 댓글을 찾을 수 없습니다", "PARENT_COMMENT_NOT_FOUND", HttpStatus.NOT_FOUND));
             comment.setParent(parentsComment);
         }
 
@@ -47,9 +51,6 @@ public class ForumCommentService {
                 .map(this::toDto)
                 .toList();
     }
-
-
-
 
     private ForumCommentDto toDto(ForumComment comment) {
         return ForumCommentDto.builder()
@@ -70,5 +71,4 @@ public class ForumCommentService {
                         : List.of())
                 .build();
     }
-
 }

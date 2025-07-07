@@ -1,13 +1,14 @@
 package ImgBell.Forum.ForumLike;
 
-
 import ImgBell.Forum.*;
 import ImgBell.Image.Image;
 import ImgBell.Image.ImageDto;
 import ImgBell.ImageLike.ImageLike;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,13 +25,14 @@ public class ForumLikeService {
 
     public void likeForum(Long memberId, Long forumId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("회원 없음"));
+                .orElseThrow(() -> new GlobalException("회원을 찾을 수 없습니다", "MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND));
         Forum forum = forumRepository.findById(forumId)
-                .orElseThrow(() -> new RuntimeException("포럼 글 없음"));
+                .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         // 중복 좋아요 체크
         Optional<ForumLike> existingLike = forumLikeRepository.findByMemberAndForum(member, forum);
-        Forum targetForum = forumRepository.findById(forumId).orElseThrow(()->new RuntimeException("그런포럼글 없음"));
+        Forum targetForum = forumRepository.findById(forumId)
+                .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         if (existingLike.isPresent()) {
             // 이미 좋아요 누름 → 취소
@@ -54,10 +56,9 @@ public class ForumLikeService {
         forumRepository.save(targetForum);
     }
 
-
     public List<ForumResponse> getLikedForum(Long memberId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("회원 없음"));
+                .orElseThrow(() -> new GlobalException("회원을 찾을 수 없습니다", "MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         List<ForumLike> likes = forumLikeRepository.findAllByMember(member);
 

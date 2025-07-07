@@ -1,6 +1,7 @@
 package ImgBell.Auth.OAuth;
 
 import ImgBell.Auth.JWT.JWTUtil;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -57,7 +59,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                         (String) kakaoAccount.get("email") : 
                         "kakao_" + kakaoId;
             } else {
-                throw new RuntimeException("사용자 정보를 찾을 수 없습니다.");
+                throw new GlobalException("OAuth2 사용자 정보를 찾을 수 없습니다", "OAUTH2_USER_INFO_NOT_FOUND", HttpStatus.BAD_REQUEST);
             }
 
             String accessToken = jwtUtil.createAccessToken(authentication);

@@ -2,6 +2,7 @@ package ImgBell.Image;
 
 import ImgBell.Image.ElasticSearch.ImageSearchService;
 import ImgBell.Member.CustomUserDetails;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -58,8 +59,7 @@ public class ImageController {
     @GetMapping("/presigned-url")
     public PresignedUrlResponse getPermanentImgUrl(
         @Parameter(description = "업로드할 파일명", required = true, example = "image.jpg")
-        @RequestParam String filename, 
-        
+        @RequestParam String filename,
         @Parameter(description = "파일 타입", required = true, example = "images")
         @RequestParam String filetype
     ) {
@@ -95,7 +95,7 @@ public class ImageController {
             System.out.println("이미지 업로드");
             imageService.saveFileInfoToDb(images);
             return new ResponseEntity<>("Added", HttpStatus.CREATED);
-        } catch (RuntimeException e) {
+        } catch (GlobalException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
@@ -236,6 +236,7 @@ public class ImageController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
         }
     }
+
 
     @Operation(
         summary = "인기 이미지 조회",

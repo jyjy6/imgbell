@@ -1,6 +1,7 @@
 package ImgBell.Image;
 
 import ImgBell.Redis.RedisService;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -8,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +52,7 @@ public class RecentViewService {
             redisService.expire(key, RECENT_VIEW_TTL, TimeUnit.DAYS);
 
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("최근 본 항목 저장 중 오류 발생", e);
+            throw new GlobalException("최근 본 항목 저장 중 오류가 발생했습니다", "RECENT_VIEW_SAVE_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     

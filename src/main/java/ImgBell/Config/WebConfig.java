@@ -13,7 +13,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("http://localhost", "http://localhost:*", "http://218.38.160.152:*", "http://127.0.0.1:*", "http://0.0.0.0:*", "http://ec2-3-34-4-131.ap-northeast-2.compute.amazonaws.com:5173", "http://ec2-3-34-4-131.ap-northeast-2.compute.amazonaws.com:*") // 포트 무관 허용
+                .allowedOriginPatterns("http://localhost", "http://localhost:*", "http://218.38.160.152:*", "http://127.0.0.1:*", "http://0.0.0.0:*", "http://ec2-52-79-240-134.ap-northeast-2.compute.amazonaws.com:5173", "http://ec2-52-79-240-134.ap-northeast-2.compute.amazonaws.com:80", "http://ec2-52-79-240-134.ap-northeast-2.compute.amazonaws.com") // 포트 무관 허용
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

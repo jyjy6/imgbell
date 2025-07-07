@@ -1,12 +1,13 @@
 package ImgBell.Image.ElasticSearch;
 
-import ImgBell.Image.Image;
-import ImgBell.Image.ImageRepository;
+import ImgBell.Image.*;
 import ImgBell.Image.Tag.Tag;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,7 +88,7 @@ public class ImageSyncService {
     public void syncSingleImage(Long imageId) {
         try {
             Image image = imageRepository.findById(imageId)
-                    .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다: " + imageId));
+                    .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다", "IMAGE_NOT_FOUND", HttpStatus.NOT_FOUND));
             
             ImageDocument document = convertToDocument(image);
             imageSearchRepository.save(document);
@@ -138,7 +139,7 @@ public class ImageSyncService {
             
         } catch (Exception e) {
             log.error("❌ 전체 이미지 동기화 실패: {}", e.getMessage());
-            throw new RuntimeException("동기화 실패", e);
+            throw new GlobalException("ElasticSearch 동기화 실패", "ELASTICSEARCH_SYNC_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

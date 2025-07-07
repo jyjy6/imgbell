@@ -1,5 +1,6 @@
 package ImgBell.Image;
 
+import ImgBell.GlobalErrorHandler.GlobalException;
 import ImgBell.Image.Comment.Comment;
 import ImgBell.Image.Comment.CommentDto;
 import ImgBell.Image.ElasticSearch.ImageSyncService;
@@ -12,6 +13,7 @@ import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import ImgBell.Redis.RedisService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -38,6 +40,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ImageService {
@@ -153,7 +157,7 @@ public class ImageService {
     public ResponseEntity<?> deleteImage(@PathVariable Long id, Authentication auth){
         // 이미지 조회
         Image deleteTargetImage = imageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("그런 이미지 없습니다"));
+                .orElseThrow(() -> new GlobalException("그런 이미지 없습니다", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         // 업로더가 현재 로그인한 사용자와 일치하는지 확인
         String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
         if (!deleteTargetImage.getUploaderName().equals(username)) {
@@ -188,7 +192,15 @@ public class ImageService {
     @Transactional
     public ResponseEntity<?> editImage(ImageDto dto, Authentication auth){
 
-        Image targetImage = imageRepository.findById(dto.getId()).orElseThrow(()->new RuntimeException("그런이미지 없음"));
+        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
+
+        Image targetImage = imageRepository.findById(dto.getId()).orElseThrow(()->new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND"));
+
+
+        if(!username.equals(targetImage.getUploaderName())){
+            throw new GlobalException("다른사람은 수정할 수 없습니다..", "IMAGE_EDIT_UNAUTHORIZED", HttpStatus.UNAUTHORIZED);
+        }
+
         targetImage.setImageName(dto.getImageName());
         Set<Tag> tagEntities = new HashSet<>();
         for (TagDto tagDto : dto.getTags()) {
@@ -213,7 +225,7 @@ public class ImageService {
         try {
             imageSyncService.syncSingleImage(savedImage.getId());
         } catch (Exception syncError) {
-            System.out.println("ElasticSearch 업데이트 동기화 실패: " + syncError.getMessage());
+            throw new GlobalException("ElasticSearch 업데이트 동기화 실패", "ELASTICSEARCH_SYNC_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         // Entity를 DTO로 변환
@@ -309,14 +321,14 @@ public class ImageService {
     @Transactional
     public boolean toggleImagePublic(Long imageId, Authentication auth) {
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new IllegalArgumentException("이미지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         Long userId = ((CustomUserDetails) auth.getPrincipal()).getId();
 
         System.out.println(auth.getAuthorities());
 
         // 업로더 확인
         if (image.getUploader() != null && !image.getUploader().getId().equals(userId) && auth.getAuthorities().contains("ROLE_ADMIN")){
-            throw new SecurityException("이미지 공개 설정을 변경할 권한이 없습니다.");
+            throw new GlobalException("이미지 공개 설정을 변경할 권한이 없습니다.", "NOT_AUTHORIZED", HttpStatus.FORBIDDEN);
         }
 
         // 공개/비공개 토글
@@ -333,7 +345,7 @@ public class ImageService {
     @Transactional
     public ImageDto getImageDetail(Long id, Boolean increaseView, Authentication auth) {
             Image image = imageRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
             // 조회수 증가
             if(increaseView) {
                 // ✅ 통합된 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
@@ -475,7 +487,7 @@ public class ImageService {
     public void incrementLikeCount(Long imageId) {
         // DB 업데이트
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         image.setLikeCount(image.getLikeCount() + 1);
         imageRepository.save(image);
         
@@ -493,7 +505,7 @@ public class ImageService {
     public void decrementLikeCount(Long imageId) {
         // DB 업데이트
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         image.setLikeCount(Math.max(0, image.getLikeCount() - 1)); // 0 미만으로 내려가지 않도록
         imageRepository.save(image);
         
@@ -510,7 +522,7 @@ public class ImageService {
     public void incrementViewCount(Long imageId) {
         // DB 업데이트
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         image.setViewCount(image.getViewCount() + 1);
         imageRepository.save(image);
         
@@ -528,7 +540,7 @@ public class ImageService {
     public void incrementDownloadCount(Long imageId) {
         // DB 업데이트
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("이미지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         image.setDownloadCount(image.getDownloadCount() + 1);
         imageRepository.save(image);
         

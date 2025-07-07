@@ -3,7 +3,9 @@ package ImgBell.ImageLike;
 import ImgBell.Image.*;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,9 +23,9 @@ public class ImageLikeService {
 
     public void likeProduct(Long memberId, Long imageId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("회원 없음"));
+                .orElseThrow(() -> new GlobalException("회원을 찾을 수 없습니다", "MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND));
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("이미지 없음"));
+                .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다", "IMAGE_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         // 중복 좋아요 체크
         Optional<ImageLike> existingLike = imageLikeRepository.findByMemberAndImage(member, image);
@@ -55,7 +57,7 @@ public class ImageLikeService {
 
     public List<ImageDto> getLikedProducts(Long memberId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("회원 없음"));
+                .orElseThrow(() -> new GlobalException("회원을 찾을 수 없습니다", "MEMBER_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         List<ImageLike> likes = imageLikeRepository.findAllByMember(member);
 
