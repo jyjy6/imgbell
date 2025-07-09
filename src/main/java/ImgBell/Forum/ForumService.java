@@ -3,6 +3,8 @@ package ImgBell.Forum;
 import ImgBell.Member.CustomUserDetails;
 import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -11,15 +13,20 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class ForumService {
     private final ForumRepository forumRepository;
 
-    public void postForum(ForumFormDto forumDto, Authentication auth){
+    public void postForum(ForumFormDto forumDto, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()){
+            throw new GlobalException("인증정보가 없습니다", "POST_FORUM_LOGIN_NEEDED", HttpStatus.UNAUTHORIZED);
+        }
+        String username = ((CustomUserDetails) auth.getPrincipal()).getUsername();
+        String displayName = ((CustomUserDetails) auth.getPrincipal()).getDisplayName();
 
-        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
-        String displayName = ((CustomUserDetails)auth.getPrincipal()).getDisplayName();
 
         Forum forum = new Forum();
         forum.setTitle(forumDto.getTitle());
@@ -32,18 +39,18 @@ public class ForumService {
         forumRepository.save(forum);
     }
 
-    public void editForum(Long id, ForumFormDto forumDto, Authentication auth){
+    public void editForum(Long id, ForumFormDto forumDto, Authentication auth) {
         try {
             String username = ((CustomUserDetails) auth.getPrincipal()).getUsername();
             String displayName = ((CustomUserDetails) auth.getPrincipal()).getDisplayName();
 
             Forum forum = forumRepository.findById(id)
                     .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
-            
+
             if (!username.equals(forum.getAuthorUsername())) {
                 throw new GlobalException("글쓴이만 수정할 수 있습니다", "UNAUTHORIZED_EDIT", HttpStatus.FORBIDDEN);
             }
-            
+
             forum.setTitle(forumDto.getTitle());
             forum.setContent(forumDto.getContent());
             Forum.PostType postType = forumDto.getType() != null ?
@@ -52,9 +59,9 @@ public class ForumService {
             forum.setAuthorDisplayName(displayName);
             forum.setAuthorUsername(username);
             forumRepository.save(forum);
-        } catch (Exception e){
-            System.out.println("에러남");
-            System.out.println(e.getMessage());
+        } catch (GlobalException e) {
+            log.error("예상치못한에러{}", e.getMessage());
+            throw e;
         }
     }
 
@@ -65,17 +72,17 @@ public class ForumService {
 
     // 또는 상세 조회시에는
     public ForumResponse getForumDetail(Long id) {
-        Forum forum = forumRepository.findById(id).orElseThrow(()->new GlobalException("그런 게시물 없습니다", "FORUM_NOT_FOUND"));
+        Forum forum = forumRepository.findById(id).orElseThrow(() -> new GlobalException("그런 게시물 없습니다", "FORUM_NOT_FOUND"));
         return ForumResponse.from(forum);  // from 메서드 사용 (전체 정보 포함)
     }
 
     //포럼 수정용 Dto반환
     public ForumFormDto getForumDetail(Long id, Authentication auth) {
 
-        String username = ((CustomUserDetails)auth.getPrincipal()).getUsername();
-        Forum forum = forumRepository.findById(id).orElseThrow(()->new GlobalException("그런 게시물 없습니다", "FORUM_NOT_FOUND"));
+        String username = ((CustomUserDetails) auth.getPrincipal()).getUsername();
+        Forum forum = forumRepository.findById(id).orElseThrow(() -> new GlobalException("그런 게시물 없습니다", "FORUM_NOT_FOUND"));
 
-        if(!username.equals(forum.getAuthorUsername())){
+        if (!username.equals(forum.getAuthorUsername())) {
             throw new GlobalException("글쓴이만 수정할 수 있습니다", "UNAUTHORIZED_EDIT", HttpStatus.FORBIDDEN);
         }
         ForumFormDto editForm = new ForumFormDto();
