@@ -25,57 +25,92 @@ public class RankingService {
     private static final int DOWNLOAD_SCORE = 2;
     
     /**
-     * 이미지 점수 업데이트 (Sorted Set 활용)
+     * 점수 업데이트 (범용 메소드)
      */
-    public void updateImageScore(Long imageId, int score) {
+    public void updateScore(String table, Long id, int score) {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String thisWeek = getWeekKey();
         String thisMonth = getMonthKey();
         
+        String prefix = table.equals("forum") ? "forum:" : "";
+        
         // Sorted Set을 사용하여 점수 증가 (더 효율적)
-        redisService.incrementScoreInSortedSet(DAILY_RANKING_KEY + today, imageId.toString(), score);
-        redisService.incrementScoreInSortedSet(WEEKLY_RANKING_KEY + thisWeek, imageId.toString(), score);
-        redisService.incrementScoreInSortedSet(MONTHLY_RANKING_KEY + thisMonth, imageId.toString(), score);
+        redisService.incrementScoreInSortedSet(prefix + DAILY_RANKING_KEY + today, id.toString(), score);
+        redisService.incrementScoreInSortedSet(prefix + WEEKLY_RANKING_KEY + thisWeek, id.toString(), score);
+        redisService.incrementScoreInSortedSet(prefix + MONTHLY_RANKING_KEY + thisMonth, id.toString(), score);
         
         // TTL 설정 (메모리 최적화)
-        redisService.expire(DAILY_RANKING_KEY + today, 2, TimeUnit.DAYS);
-        redisService.expire(WEEKLY_RANKING_KEY + thisWeek, 8, TimeUnit.DAYS);
-        redisService.expire(MONTHLY_RANKING_KEY + thisMonth, 32, TimeUnit.DAYS);
+        redisService.expire(prefix + DAILY_RANKING_KEY + today, 2, TimeUnit.DAYS);
+        redisService.expire(prefix + WEEKLY_RANKING_KEY + thisWeek, 8, TimeUnit.DAYS);
+        redisService.expire(prefix + MONTHLY_RANKING_KEY + thisMonth, 32, TimeUnit.DAYS);
     }
     
     /**
-     * 점수 타입별 업데이트 메서드
+     * 기존 이미지 점수 업데이트 (하위 호환성 유지)
+     */
+    public void updateImageScore(Long imageId, int score) {
+        updateScore("image", imageId, score);
+    }
+    
+    /**
+     * 점수 타입별 업데이트 메서드 (범용)
+     */
+    public void updateViewScore(String table, Long id) {
+        updateScore(table, id, VIEW_SCORE);
+    }
+    
+    public void updateLikeScore(String table, Long id) {
+        updateScore(table, id, LIKE_SCORE);
+    }
+    
+    public void updateDownloadScore(String table, Long id) {
+        updateScore(table, id, DOWNLOAD_SCORE);
+    }
+    
+    /**
+     * 기존 이미지 전용 메소드들 (하위 호환성 유지)
      */
     public void updateViewScore(Long imageId) {
-        updateImageScore(imageId, VIEW_SCORE);
+        updateViewScore("image", imageId);
     }
     
     public void updateLikeScore(Long imageId) {
-        updateImageScore(imageId, LIKE_SCORE);
+        updateLikeScore("image", imageId);
     }
     
     public void updateDownloadScore(Long imageId) {
-        updateImageScore(imageId, DOWNLOAD_SCORE);
+        updateDownloadScore("image", imageId);
     }
     
     /**
-     * 상위 랭킹 이미지 조회 (개선된 버전)
+     * 상위 랭킹 조회 (개선된 버전)
      */
-    public List<Long> getTopImages(String period, int limit) {
-        String key = getRankingKey(period);
-        
-        Set<Object> topImages = redisService.getTopRanking(key, limit);
-        
-        return topImages.stream()
-                .map(imageId -> Long.valueOf(imageId.toString()))
+    public List<Long> getTop(String table, String period, int limit) {
+        String key;
+        Set<Object> topRankers;
+
+        if (table.equals("image")) {
+            key = getRankingKey(period);
+        } else {
+            key = getRankingKeyForForum(period);
+        }
+        topRankers = redisService.getTopRanking(key, limit);
+
+        return topRankers.stream()
+                .map(id -> Long.valueOf(id.toString()))
                 .collect(Collectors.toList());
     }
-    
+
     /**
-     * 점수와 함께 랭킹 조회
+     * 점수와 함께 랭킹 조회 (범용)
      */
-    public List<RankingEntry> getTopImagesWithScores(String period, int limit) {
-        String key = getRankingKey(period);
+    public List<RankingEntry> getTopWithScores(String table, String period, int limit) {
+        String key;
+        if (table.equals("image")) {
+            key = getRankingKey(period);
+        } else {
+            key = getRankingKeyForForum(period);
+        }
         
         Set<ZSetOperations.TypedTuple<Object>> rankingWithScores = 
             redisService.getRangeWithScores(key, 0, limit - 1);
@@ -89,19 +124,45 @@ public class RankingService {
     }
     
     /**
-     * 특정 이미지의 랭킹 점수 조회
+     * 기존 이미지 전용 메소드 (하위 호환성 유지)
+     */
+    public List<RankingEntry> getTopImagesWithScores(String period, int limit) {
+        return getTopWithScores("image", period, limit);
+    }
+    
+    /**
+     * 특정 항목의 랭킹 점수 조회 (범용)
+     */
+    public Double getScore(String table, Long id, String period) {
+        String key;
+        if (table.equals("image")) {
+            key = getRankingKey(period);
+        } else {
+            key = getRankingKeyForForum(period);
+        }
+        return redisService.getScore(key, id.toString());
+    }
+    
+    /**
+     * 기존 이미지 전용 메소드 (하위 호환성 유지)
      */
     public Double getImageScore(Long imageId, String period) {
-        String key = getRankingKey(period);
-        return redisService.getScore(key, imageId.toString());
+        return getScore("image", imageId, period);
     }
     
     private String getRankingKey(String period) {
         return switch (period.toLowerCase()) {
             case "daily" -> DAILY_RANKING_KEY + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
             case "weekly" -> WEEKLY_RANKING_KEY + getWeekKey();
-            case "monthly" -> MONTHLY_RANKING_KEY + getMonthKey();
             default -> DAILY_RANKING_KEY + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        };
+    }
+
+    private String getRankingKeyForForum(String period) {
+        return switch (period.toLowerCase()) {
+            case "daily" -> "forum:"+DAILY_RANKING_KEY + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            case "weekly" -> "forum:"+WEEKLY_RANKING_KEY + getWeekKey();
+            default -> "forum:"+DAILY_RANKING_KEY + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         };
     }
     
@@ -114,18 +175,20 @@ public class RankingService {
     }
     
     /**
-     * 랭킹 엔트리 클래스
+     * 랭킹 엔트리 클래스 (범용)
      */
     public static class RankingEntry {
-        private final Long imageId;
+        private final Long id;
         private final Integer score;
         
-        public RankingEntry(Long imageId, Integer score) {
-            this.imageId = imageId;
+        public RankingEntry(Long id, Integer score) {
+            this.id = id;
             this.score = score;
         }
         
-        public Long getImageId() { return imageId; }
+        public Long getId() { return id; }
+        public Long getImageId() { return id; } // 하위 호환성 유지
+        public Long getForumId() { return id; } // 포럼용
         public Integer getScore() { return score; }
     }
 } 

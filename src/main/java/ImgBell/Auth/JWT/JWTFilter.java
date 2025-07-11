@@ -51,6 +51,13 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 🔥 모니터링 엔드포인트는 JWT 검증 제외 (Prometheus + Grafana)
+        if (pathMatcher.match("/actuator/**", request.getRequestURI())) {
+            System.out.println("Actuator 요청이므로 JWT 필터를 건너뜁니다.");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         
         if (pathMatcher.match("/api/oauth/google/call-back", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");

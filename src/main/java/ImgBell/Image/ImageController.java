@@ -288,7 +288,7 @@ public class ImageController {
             @Parameter(description = "조회할 랭킹 수", example = "10")
             @RequestParam(defaultValue = "10") int limit) {
 
-        List<Long> topImages = rankingService.getTopImages(period, limit);
+        List<Long> topImages = rankingService.getTop("image", period, limit);
         return ResponseEntity.ok(topImages);
     }
     
@@ -323,7 +323,7 @@ public class ImageController {
         Double score = rankingService.getImageScore(imageId, period);
         return ResponseEntity.ok(score != null ? score : 0.0);
     }
-    
+
     @Operation(
         summary = "이미지 다운로드 기록",
         description = "이미지 다운로드 횟수를 증가시킵니다."
@@ -344,6 +344,9 @@ public class ImageController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+
+
 
 //    여기부터 AI ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
     @Operation(summary = "이미지 AI 분석", description = "이미지 URL을 받아서 AI로 자동 태그 생성 및 품질 분석")

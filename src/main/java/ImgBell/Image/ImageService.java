@@ -12,6 +12,7 @@ import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
 import ImgBell.Redis.RedisService;
+import io.micrometer.core.instrument.Counter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
@@ -54,6 +55,11 @@ public class ImageService {
     private final RankingService rankingService;
     private final RedisService redisService;
     private final ImageSyncService imageSyncService;
+    
+    // 🔥 Prometheus 메트릭 추가
+    private final Counter imageUploadCounter;
+    private final Counter imageDownloadCounter;
+    
     private static final String VIEW_COUNT_KEY = "image:views:";
     private static final String LIKE_COUNT_KEY = "image:likes:";
 
@@ -119,6 +125,10 @@ public class ImageService {
                 image.setTags(tagEntities);
 
                 Image savedImage = imageRepository.save(image);
+                
+                // 🔥 Prometheus 메트릭: 이미지 업로드 카운터 증가
+                imageUploadCounter.increment();
+                log.info("이미지 업로드 메트릭 증가: {}", savedImage.getId());
                 
                 // 🔄 ElasticSearch 동기화
                 try {
@@ -543,6 +553,10 @@ public class ImageService {
                 .orElseThrow(() -> new GlobalException("이미지를 찾을 수 없습니다.", "NOT_IMAGE_FOUND", HttpStatus.NOT_FOUND));
         image.setDownloadCount(image.getDownloadCount() + 1);
         imageRepository.save(image);
+        
+        // 🔥 Prometheus 메트릭: 이미지 다운로드 카운터 증가
+        imageDownloadCounter.increment();
+        log.info("이미지 다운로드 메트릭 증가: {}", imageId);
         
         // Redis 캐시 업데이트
         redisService.incrementHashValue("image:stats:" + imageId, "downloadCount", 1);

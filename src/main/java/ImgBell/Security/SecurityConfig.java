@@ -58,6 +58,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 프리플라이트(OPTIONS)는 모두 허용
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // 🔥 모니터링 엔드포인트 허용 (Prometheus + Grafana)
+                        .requestMatchers("/actuator/**").permitAll()
                         // 관리자 페이지
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 최고 관리자 페이지

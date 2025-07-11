@@ -31,15 +31,14 @@ public class ForumLikeService {
 
         // 중복 좋아요 체크
         Optional<ForumLike> existingLike = forumLikeRepository.findByMemberAndForum(member, forum);
-        Forum targetForum = forumRepository.findById(forumId)
-                .orElseThrow(() -> new GlobalException("게시글을 찾을 수 없습니다", "FORUM_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         if (existingLike.isPresent()) {
             // 이미 좋아요 누름 → 취소
             System.out.println("좋아요 취소");
             forumLikeRepository.delete(existingLike.get());
-            // 좋아요 개수 감소
-            targetForum.setLikeCount(targetForum.getLikeCount()-1);
+            
+            // ✅ ForumService의 통합 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
+            forumService.decrementLikeCount(forumId);
 
         } else {
             // 좋아요 등록
@@ -49,11 +48,13 @@ public class ForumLikeService {
                     .forum(forum)
                     .build();
             forumLikeRepository.save(like);
-            //좋아요 개수 증가
-            targetForum.setLikeCount(targetForum.getLikeCount()+1);
-
+            
+            // ✅ ForumService의 통합 메서드 사용 (DB + Redis + 랭킹 한번에 처리)
+            forumService.incrementLikeCount(forumId);
         }
-        forumRepository.save(targetForum);
+        
+        // ❌ 불필요한 save 제거 (increment/decrementLikeCount에서 이미 처리함)
+        // forumRepository.save(targetForum);
     }
 
     public List<ForumResponse> getLikedForum(Long memberId) {
