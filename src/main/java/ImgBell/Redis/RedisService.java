@@ -1,5 +1,6 @@
 package ImgBell.Redis;
 
+import ImgBell.GlobalErrorHandler.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import org.springframework.data.redis.connection.ReturnType;
+import org.springframework.data.redis.core.RedisCallback;
 
 @Service
 @RequiredArgsConstructor
@@ -92,5 +95,73 @@ public class RedisService {
 
     public void incrementHashValue(String key, String field, long delta) {
         redisTemplate.opsForHash().increment(key, field, delta);
+    }
+
+    // === 세션 관리 ===
+    public void saveSession(String sessionId, Object sessionData, long timeout, TimeUnit unit) {
+        redisTemplate.opsForValue().set("session:" + sessionId, sessionData, timeout, unit);
+    }
+
+    public Object getSession(String sessionId) {
+        return redisTemplate.opsForValue().get("session:" + sessionId);
+    }
+
+    public void removeSession(String sessionId) {
+        redisTemplate.delete("session:" + sessionId);
+    }
+
+    // === 분산 락 ===
+    public boolean acquireLock(String lockKey, String lockValue, long timeout, TimeUnit unit) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, timeout, unit));
+    }
+
+    public boolean releaseLock(String lockKey, String lockValue) {
+        // Lua 스크립트로 안전한 락 해제
+        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+        Long result = redisTemplate.execute(
+            (RedisCallback<Long>) connection -> 
+                connection.eval(script.getBytes(), ReturnType.INTEGER, 1, lockKey.getBytes(), lockValue.getBytes())
+        );
+        return result != null && result == 1L;
+    }
+
+    // === 카운터 ===
+    public long increment(String key) {
+        return redisTemplate.opsForValue().increment(key);
+    }
+
+    public long incrementBy(String key, long delta) {
+        return redisTemplate.opsForValue().increment(key, delta);
+    }
+
+    // === 분산락 편의 메서드 ===
+    public void executeWithLock(String lockKey, long timeout, TimeUnit unit, Runnable task) {
+        String lockValue = java.util.UUID.randomUUID().toString();
+        
+        if (acquireLock(lockKey, lockValue, timeout, unit)) {
+            try {
+                task.run();
+            } finally {
+                releaseLock(lockKey, lockValue);
+            }
+        } else {
+            throw new GlobalException("락 획득 실패: ", "FAILED_REDIS_LOCK_ACQUIRE");
+        }
+    }
+
+    public <T> T executeWithLock(String lockKey, long timeout, TimeUnit unit, 
+                                 java.util.function.Supplier<T> task) {
+        String lockValue = java.util.UUID.randomUUID().toString();
+        
+        if (acquireLock(lockKey, lockValue, timeout, unit)) {
+            try {
+                return task.get();
+            } finally {
+                releaseLock(lockKey, lockValue);
+            }
+        } else {
+            throw new RuntimeException("락 획득 실패: " + lockKey);
+            // throw new GlobalException("락 획득 실패: ", "FAILED_REDIS_LOCK_ACQUIRE");
+        }
     }
 }
