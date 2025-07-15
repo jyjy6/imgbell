@@ -1,6 +1,6 @@
 package ImgBell.Image;
 
-import ImgBell.Image.ElasticSearch.ImageSearchService;
+import ImgBell.Redis.RateLimit;
 import ImgBell.Member.CustomUserDetails;
 import ImgBell.GlobalErrorHandler.GlobalException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/image")
@@ -55,6 +53,13 @@ public class ImageController {
             content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))),
         @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
+    @RateLimit(
+        windowSeconds = 60,
+        maxRequests = 20,
+        identifierType = RateLimit.IdentifierType.USER_ID,
+        type = RateLimit.RateLimitType.SLIDING_WINDOW,
+        message = "Presigned URL 생성 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+    )
     @ResponseBody
     @GetMapping("/presigned-url")
     public PresignedUrlResponse getPermanentImgUrl(
@@ -85,6 +90,13 @@ public class ImageController {
         @ApiResponse(responseCode = "201", description = "이미지 정보 저장 성공"),
         @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
+    @RateLimit(
+        windowSeconds = 300,
+        maxRequests = 10,
+        identifierType = RateLimit.IdentifierType.USER_ID,
+        type = RateLimit.RateLimitType.SLIDING_WINDOW,
+        message = "이미지 업로드 요청이 너무 많습니다. 5분 후 다시 시도해주세요."
+    )
     @PostMapping("/upload")
     public ResponseEntity<?> registerFiles(
         @Parameter(description = "저장할 이미지 정보 리스트", required = true)
@@ -332,6 +344,13 @@ public class ImageController {
         @ApiResponse(responseCode = "200", description = "다운로드 기록 성공"),
         @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
+    @RateLimit(
+        windowSeconds = 60,
+        maxRequests = 100,
+        identifierType = RateLimit.IdentifierType.IP,
+        type = RateLimit.RateLimitType.SLIDING_WINDOW,
+        message = "다운로드 요청이 너무 많습니다. 1분 후 다시 시도해주세요."
+    )
     @PostMapping("/download/{imageId}")
     public ResponseEntity<?> downloadImage(
         @Parameter(description = "다운로드할 이미지 ID", required = true, example = "1")
@@ -351,6 +370,15 @@ public class ImageController {
 //    여기부터 AI ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
     @Operation(summary = "이미지 AI 분석", description = "이미지 URL을 받아서 AI로 자동 태그 생성 및 품질 분석")
     @ApiResponse(responseCode = "200", description = "분석 성공")
+    @RateLimit(
+        windowSeconds = 3600,
+        maxRequests = 50,
+        identifierType = RateLimit.IdentifierType.USER_ID,
+        type = RateLimit.RateLimitType.TOKEN_BUCKET,
+        capacity = 50,
+        refillRate = 0.5,
+        message = "AI 분석 요청이 너무 많습니다. 시간당 50회로 제한됩니다."
+    )
     @PostMapping("/ai/analyze")
     public ResponseEntity<ImageAIService.ImageAnalysisResult> analyzeImageByUrl(@RequestBody Map<String, String> request) {
         try {
@@ -369,6 +397,15 @@ public class ImageController {
 
     @Operation(summary = "이미지 파일 AI 분석", description = "업로드된 이미지 파일을 직접 받아서 AI로 분석")
     @ApiResponse(responseCode = "200", description = "분석 성공")
+    @RateLimit(
+        windowSeconds = 3600,
+        maxRequests = 30,
+        identifierType = RateLimit.IdentifierType.USER_ID,
+        type = RateLimit.RateLimitType.TOKEN_BUCKET,
+        capacity = 30,
+        refillRate = 0.3,
+        message = "AI 파일 분석 요청이 너무 많습니다. 시간당 30회로 제한됩니다."
+    )
     @PostMapping("/ai/analyze/file")
     public ResponseEntity<ImageAIService.ImageAnalysisResult> analyzeImageByFile(
             @RequestParam("file") MultipartFile file) {

@@ -25,6 +25,11 @@ public class GlobalExceptionHandler {
                 ex.getHttpStatus().value()
         );
 
+        // Rate Limit 예외인 경우 특별 처리
+        if ("RATE_LIMIT_EXCEEDED".equals(ex.getErrorCode())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(errorResponse);
+        }
+
         return ResponseEntity.status(ex.getHttpStatus()).body(errorResponse);
     }
 

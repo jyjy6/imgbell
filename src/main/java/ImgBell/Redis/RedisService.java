@@ -164,4 +164,124 @@ public class RedisService {
             // throw new GlobalException("락 획득 실패: ", "FAILED_REDIS_LOCK_ACQUIRE");
         }
     }
+
+    // === Rate Limiting ===
+    
+    /**
+     * Fixed Window Rate Limiting
+     * @param key 식별자 (IP, 회원ID 등)
+     * @param windowSizeInSeconds 시간 창 크기 (초)
+     * @param maxRequests 최대 요청 수
+     * @return 요청 허용 여부
+     */
+    public boolean isAllowedFixedWindow(String key, long windowSizeInSeconds, int maxRequests) {
+        long currentWindow = System.currentTimeMillis() / 1000 / windowSizeInSeconds;
+        String windowKey = "rate_limit:fixed:" + key + ":" + currentWindow;
+        
+        Long currentCount = redisTemplate.opsForValue().increment(windowKey);
+        
+        if (currentCount == 1) {
+            redisTemplate.expire(windowKey, windowSizeInSeconds, TimeUnit.SECONDS);
+        }
+        
+        return currentCount <= maxRequests;
+    }
+    
+    /**
+     * Sliding Window Rate Limiting (정밀한 방식)
+     * @param key 식별자 (IP, 회원ID 등)
+     * @param windowSizeInSeconds 시간 창 크기 (초)
+     * @param maxRequests 최대 요청 수
+     * @return 요청 허용 여부
+     */
+    public boolean isAllowedSlidingWindow(String key, long windowSizeInSeconds, int maxRequests) {
+        long now = System.currentTimeMillis();
+        long windowStart = now - (windowSizeInSeconds * 1000);
+        String slidingKey = "rate_limit:sliding:" + key;
+        
+        // 현재 시간을 score로 하여 ZSet에 추가
+        redisTemplate.opsForZSet().add(slidingKey, now, now);
+        
+        // 시간 창 밖의 오래된 요청들 제거
+        redisTemplate.opsForZSet().removeRangeByScore(slidingKey, 0, windowStart);
+        
+        // 현재 시간 창 내의 요청 수 조회
+        Long currentCount = redisTemplate.opsForZSet().count(slidingKey, windowStart, now);
+        
+        // TTL 설정
+        redisTemplate.expire(slidingKey, windowSizeInSeconds, TimeUnit.SECONDS);
+        
+        return currentCount <= maxRequests;
+    }
+    
+    /**
+     * Token Bucket Rate Limiting
+     * @param key 식별자
+     * @param capacity 버킷 용량
+     * @param refillRate 초당 리필 속도
+     * @return 요청 허용 여부
+     */
+    public boolean isAllowedTokenBucket(String key, int capacity, double refillRate) {
+        String bucketKey = "rate_limit:bucket:" + key;
+        long now = System.currentTimeMillis();
+        
+        // Lua 스크립트로 원자적 처리
+        String script = 
+            "local bucket_key = KEYS[1]\n" +
+            "local capacity = tonumber(ARGV[1])\n" +
+            "local refill_rate = tonumber(ARGV[2])\n" +
+            "local now = tonumber(ARGV[3])\n" +
+            "local bucket = redis.call('hmget', bucket_key, 'tokens', 'last_refill')\n" +
+            "local tokens = tonumber(bucket[1]) or capacity\n" +
+            "local last_refill = tonumber(bucket[2]) or now\n" +
+            "local time_passed = (now - last_refill) / 1000\n" +
+            "tokens = math.min(capacity, tokens + (time_passed * refill_rate))\n" +
+            "if tokens >= 1 then\n" +
+            "    tokens = tokens - 1\n" +
+            "    redis.call('hmset', bucket_key, 'tokens', tokens, 'last_refill', now)\n" +
+            "    redis.call('expire', bucket_key, 3600)\n" +
+            "    return 1\n" +
+            "else\n" +
+            "    redis.call('hmset', bucket_key, 'tokens', tokens, 'last_refill', now)\n" +
+            "    redis.call('expire', bucket_key, 3600)\n" +
+            "    return 0\n" +
+            "end";
+        
+        Long result = redisTemplate.execute(
+            (RedisCallback<Long>) connection -> 
+                connection.eval(script.getBytes(), ReturnType.INTEGER, 1, 
+                    bucketKey.getBytes(), 
+                    String.valueOf(capacity).getBytes(),
+                    String.valueOf(refillRate).getBytes(),
+                    String.valueOf(now).getBytes())
+        );
+        
+        return result != null && result == 1L;
+    }
+    
+    /**
+     * 현재 Rate Limit 상태 조회
+     * @param key 식별자
+     * @param windowSizeInSeconds 시간 창 크기
+     * @return 현재 요청 수
+     */
+    public long getCurrentRequestCount(String key, long windowSizeInSeconds) {
+        long now = System.currentTimeMillis();
+        long windowStart = now - (windowSizeInSeconds * 1000);
+        String slidingKey = "rate_limit:sliding:" + key;
+        
+        Long count = redisTemplate.opsForZSet().count(slidingKey, windowStart, now);
+        return count != null ? count : 0;
+    }
+    
+    /**
+     * Rate Limit 초기화 (관리자용)
+     * @param key 식별자
+     */
+    public void resetRateLimit(String key) {
+        Set<String> keys = redisTemplate.keys("rate_limit:*:" + key + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 }
