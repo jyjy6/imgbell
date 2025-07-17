@@ -16,6 +16,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByUsername(String username);
     boolean existsByDisplayName(String displayName);
+    boolean existsByEmail(String email);
 
     List<Member> findTop5ByOrderByCreatedAtDesc();
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

@@ -1,9 +1,11 @@
 package ImgBell.Member;
 
 import ImgBell.GlobalErrorHandler.GlobalException;
+import ImgBell.Kafka.Producer.EmailProducerService;
 import ImgBell.Member.Dto.MemberDto;
 import ImgBell.Member.Dto.MemberFormDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,19 +23,23 @@ import java.util.HashMap;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailProducerService emailProducerService;
 
 
 
 
     public Member registerUser(MemberFormDto memberFormDto) {
-        // 사용자 이름, 닉네임이 이미 존재하는지 확인
+        // 사용자 이름, 닉네임, 이메일이 이미 존재하는지 확인
         if (memberRepository.existsByUsername(memberFormDto.getUsername())) {
             throw new GlobalException("이미 사용 중인 아이디입니다", "USERNAME_ALREADY_EXISTS");
         } else if (memberRepository.existsByDisplayName(memberFormDto.getDisplayName())) {
             throw new GlobalException("이미 사용 중인 닉네임입니다", "DISPLAYNAME_ALREADY_EXISTS");
+        } else if (memberRepository.existsByEmail(memberFormDto.getEmail())) {
+            throw new GlobalException("이미 사용 중인 이메일입니다", "EMAIL_ALREADY_EXISTS");
         }
         // 비밀번호가 비어 있지 않으면 암호화
         if (memberFormDto.getPassword() == null || memberFormDto.getPassword().isEmpty()) {
@@ -47,8 +53,25 @@ public class MemberService {
             newMember.addRole("ROLE_SUPERADMIN");
             newMember.addRole("ROLE_ADMIN");
         }
+        
         // 사용자 저장
-        return memberRepository.save(newMember);
+        Member savedMember = memberRepository.save(newMember);
+        
+        // 🎉 회원가입 완료 후 환영 이메일 발송 요청 (비동기)
+        try {
+            if (savedMember.getEmail() != null && !savedMember.getEmail().trim().isEmpty()) {
+                emailProducerService.sendWelcomeEmail(savedMember.getEmail(), savedMember.getDisplayName());
+            }
+        } catch (GlobalException e) {
+            // 이메일 발송 실패해도 회원가입은 성공으로 처리
+            // 단, 로그는 에러 코드와 함께 명확히 남김
+            log.warn("⚠️ 환영 이메일 발송 실패 (회원가입은 성공): {} - {}", e.getErrorCode(), e.getMessage());
+        } catch (Exception e) {
+            // Kafka가 비활성화되어 있거나 예상치 못한 연결 실패 시에도 정상 처리
+            log.warn("ℹ️ 이메일 발송 기능 사용 불가 (개발 모드 또는 연결 문제): {}", e.getMessage());
+        }
+        
+        return savedMember;
     }
 
 

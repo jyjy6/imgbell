@@ -28,6 +28,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -67,12 +68,20 @@ dependencies {
 
 	// 🔥 현업용 Elasticsearch 의존성 (Spring Boot 3.x 호환)
 	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
-	implementation 'co.elastic.clients:elasticsearch-java:8.11.0'
+//	implementation 'co.elastic.clients:elasticsearch-java:8.11.0'
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
 
 	// 🔥 모니터링 & 메트릭 의존성 (Prometheus + Grafana)
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'io.micrometer:micrometer-registry-prometheus'
+
+	// 🚀 Apache Kafka 의존성 (메시지 큐 시스템)
+	implementation 'org.springframework.kafka:spring-kafka'
+	// Kafka 테스트용 임베디드 카프카
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	// JSON 직렬화/역직렬화를 위한 Jackson
+	implementation 'com.fasterxml.jackson.core:jackson-core'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations'
 
 }
 

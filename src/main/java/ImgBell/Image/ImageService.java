@@ -8,6 +8,7 @@ import ImgBell.Image.Tag.Tag;
 import ImgBell.Image.Tag.TagDto;
 import ImgBell.Image.Tag.TagRepository;
 import ImgBell.ImageLike.ImageLikeRepository;
+import ImgBell.Kafka.Producer.ElasticSearchProducerService;
 import ImgBell.Member.CustomUserDetails;
 import ImgBell.Member.Member;
 import ImgBell.Member.MemberRepository;
@@ -55,6 +56,7 @@ public class ImageService {
     private final RankingService rankingService;
     private final RedisService redisService;
     private final ImageSyncService imageSyncService;
+    private final ElasticSearchProducerService elasticSearchProducerService;
     
     // 🔥 Prometheus 메트릭 추가
     private final Counter imageUploadCounter;
@@ -125,14 +127,16 @@ public class ImageService {
                 image.setTags(tagEntities);
 
                 Image savedImage = imageRepository.save(image);
-                
+
                 // 🔥 Prometheus 메트릭: 이미지 업로드 카운터 증가
                 imageUploadCounter.increment();
                 log.info("이미지 업로드 메트릭 증가: {}", savedImage.getId());
-                
+
                 // 🔄 ElasticSearch 동기화
                 try {
-                    imageSyncService.syncSingleImage(savedImage.getId());
+                    //imageSyncService.syncSingleImage(savedImage.getId());
+                    log.info("elasticSearchProducerService발동");
+                    elasticSearchProducerService.sendSyncEvent(savedImage.getId());
                 } catch (Exception syncError) {
                     System.out.println("ElasticSearch 동기화 실패: " + syncError.getMessage());
                 }
@@ -189,9 +193,11 @@ public class ImageService {
 
         imageRepository.delete(deleteTargetImage);
         
-        // 🗑️ ElasticSearch에서도 삭제
+        // 🗑️ ElasticSearch에서도 삭제 
+        // ==============이거 나중에 Kafka써서 비동기로 교체
         try {
-            imageSyncService.deleteFromIndex(id);
+            // imageSyncService.deleteFromIndex(id); /**카프카 비동기로 교체*/
+            elasticSearchProducerService.sendDeleteEvent(id);
         } catch (Exception syncError) {
             System.out.println("ElasticSearch 삭제 동기화 실패: " + syncError.getMessage());
         }
@@ -231,9 +237,10 @@ public class ImageService {
 
         Image savedImage = imageRepository.save(targetImage);
 
-        // 🔄 ElasticSearch 동기화
+        // 🔄 ElasticSearch 동기화 // ==============이거 나중에 Kafka써서 비동기로 교체
         try {
-            imageSyncService.syncSingleImage(savedImage.getId());
+            // imageSyncService.syncSingleImage(savedImage.getId());
+            elasticSearchProducerService.sendSyncEvent(savedImage.getId());
         } catch (Exception syncError) {
             throw new GlobalException("ElasticSearch 업데이트 동기화 실패", "ELASTICSEARCH_SYNC_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
         }
