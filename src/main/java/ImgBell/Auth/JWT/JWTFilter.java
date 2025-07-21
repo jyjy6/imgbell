@@ -37,7 +37,7 @@ public class JWTFilter extends OncePerRequestFilter {
     private final JWTUtil jwtUtil;
 
 
-    private final String allowedOrigins; // Spring Security->SecurityConfig 생성자를 통해 주입
+//    private final String allowedOrigins; // Spring Security->SecurityConfig 생성자를 통해 주입
 
     @Override
     protected void doFilterInternal(
@@ -101,8 +101,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 // JWT 유효성 검증
                 System.out.println("만료됐는지 확인1");
                 if (!jwtUtil.isTokenExpired(jwt)) {
-                    // JWT에서 Claims 추출
-                    Claims claims = jwtUtil.extractToken(jwt);
+                    // GEMINI: extractToken -> extractClaims 로 변경
+                    Claims claims = jwtUtil.extractClaims(jwt);
                     String userInfoJson = claims.get("userInfo", String.class);
 
                     ObjectMapper objectMapper = new ObjectMapper();
@@ -132,8 +132,8 @@ public class JWTFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 } else {
-                    response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
-                    response.setHeader("Access-Control-Allow-Credentials", "true");
+//                    response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
+//                    response.setHeader("Access-Control-Allow-Credentials", "true");
                     // 401 응답 설정
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
                     return; // 필터 체인 종료

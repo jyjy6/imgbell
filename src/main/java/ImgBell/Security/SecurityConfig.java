@@ -3,114 +3,59 @@ package ImgBell.Security;
 
 import ImgBell.Auth.JWT.JWTFilter;
 import ImgBell.Auth.JWT.JWTUtil;
-import ImgBell.Auth.OAuth.CustomOAuth2UserService;
-import ImgBell.Auth.OAuth.OAuth2AuthenticationSuccessHandler;
-import ImgBell.Member.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
-
+// GEMINI: 리소스 서버(ImgBell)의 역할에 맞게 SecurityConfig를 수정합니다.
 @Configuration
-@EnableWebSecurity(debug = false)
+@EnableWebSecurity
 @EnableMethodSecurity(securedEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JWTUtil jwtUtil;
 
-    private final CustomUserDetailsService userDetailsService;
-
-    private final AuthenticationSuccessHandler loginSuccessHandler;
-
-    private final AuthenticationFailureHandler loginFailureHandler;
-
-    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
-
-    private final CustomOAuth2UserService customOAuth2UserService;
-
-    @Value("${allowed.origins}")
-    private String allowedOrigins;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable());
-        http.cors(Customizer.withDefaults());
         http
+                // GEMINI: CSRF 보호 비활성화 (JWT 사용 시 일반적으로 불필요)
+                .csrf(csrf -> csrf.disable())
+                // GEMINI: 세션을 사용하지 않으므로 STATELESS로 설정
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 프리플라이트(OPTIONS)는 모두 허용
+                        // GEMINI: OPTIONS 메서드는 인증 없이 허용
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                        // 🔥 모니터링 엔드포인트 허용 (Prometheus + Grafana)
+                        // GEMINI: 모니터링 엔드포인트는 인증 없이 허용
                         .requestMatchers("/actuator/**").permitAll()
-                        // 관리자 페이지
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // 최고 관리자 페이지
-                        .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
-                        // 프리미엄 회원 페이지
-                        .requestMatchers("/api/premium/**").hasRole("PREMIUM")
-
-                        .requestMatchers("/api/oauth/**", "/oauth2/**").permitAll()
-                        // 그 외 인증 필요
+                        // GEMINI: /api/userinfo 엔드포인트는 인증된 사용자만 접근 가능하도록 설정
+                        .requestMatchers("/api/userinfo").authenticated()
+                        // GEMINI: 그 외 모든 요청은 일단 허용 (필요에 따라 변경)
                         .anyRequest().permitAll()
-                ).addFilterBefore(new JWTFilter(jwtUtil, allowedOrigins), UsernamePasswordAuthenticationFilter.class)
-                .authenticationProvider(authenticationProvider())
-                // ... 기존 설정
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2AuthenticationSuccessHandler)
-                        .userInfoEndpoint(user -> user
-                                .userService(customOAuth2UserService)
-                        ));
+                )
+                // GEMINI: 직접 구현한 JWTFilter를 UsernamePasswordAuthenticationFilter 앞에 추가
+                .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+
+        // GEMINI: OAuth2 관련 설정은 인증 서버(AuthBell)의 역할이므로 제거합니다.
 
         return http.build();
     }
 
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
+    // GEMINI: ImgBell은 자체적으로 비밀번호를 다루지 않으므로 PasswordEncoder 빈은 제거해도 무방하나,
+    // GEMINI: 다른 곳에서 의존할 가능성을 고려하여 일단 남겨둡니다.
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration config = new CorsConfiguration();
-//        config.setAllowedOriginPatterns(List.of(allowedOrigins)); // 프론트엔드 도메인
-//        config.setAllowedMethods(List.of("*"));
-//        config.setAllowedHeaders(List.of("*"));
-//        config.setAllowCredentials(true); // 쿠키 허용
-//
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", config); // 모든 경로 적용
-//        return source;
-//    }
-
+    // GEMINI: 자체 로그인을 처리하지 않으므로 AuthenticationManager, DaoAuthenticationProvider, OAuth 관련 빈은 모두 제거합니다.
+    // GEMINI: 이러한 설정은 인증 서버(AuthBell)에만 필요합니다.
 }
