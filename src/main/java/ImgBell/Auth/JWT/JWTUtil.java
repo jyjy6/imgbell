@@ -25,7 +25,7 @@ public class JWTUtil {
         byte[] publicKeyBytes = publicKeyResource.getInputStream().readAllBytes();
         String publicKeyPEM = new String(publicKeyBytes)
                 .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replaceAll(System.lineSeparator(), "")
+                .replaceAll("\r\n|\r|\n", "")
                 .replace("-----END PUBLIC KEY-----", "");
         byte[] decodedPublicKey = Base64.getDecoder().decode(publicKeyPEM);
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKey);
