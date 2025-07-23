@@ -69,6 +69,11 @@ public class JWTFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        if (pathMatcher.match("/api/logout", request.getRequestURI())) {
+            System.out.println("로그아웃 요청이므로 JWT 필터를 건너뜁니다.");
+            filterChain.doFilter(request, response);
+            return;
+        }
         if (pathMatcher.match("/api/auth/csrf", request.getRequestURI())) {
             System.out.println("CSRF 요청이므로 JWT 필터를 건너뜁니다.");
             filterChain.doFilter(request, response);
@@ -86,9 +91,9 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
 
-
-        String authHeader = request.getHeader("Authorization");
-        System.out.println("Auth Header: " + authHeader);
+// authHeader는 이제 의미가없음 AccessToken이 쿠키방식으로 바뀌어서
+//        String authHeader = request.getHeader("Authorization");
+//        System.out.println("Auth Header: " + authHeader);
 
         // 요청에서 JWT 추출
 
@@ -144,6 +149,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
                 return; // 필터 체인 종료
             }
+        } else {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "토큰없음");
         }
 
         filterChain.doFilter(request, response);
@@ -152,6 +159,16 @@ public class JWTFilter extends OncePerRequestFilter {
 
     // 요청에서 JWT를 추출하는 메서드
     private String getJwtFromRequest(HttpServletRequest request) {
+        // 1. 쿠키에서 accessToken 찾기
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("accessToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        // 2. Authorization 헤더에서 Bearer 토큰 찾기 (기존 로직 유지)
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7); // "Bearer " 제거

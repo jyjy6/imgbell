@@ -14,6 +14,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 // GEMINI: 리소스 서버(ImgBell)의 역할에 맞게 SecurityConfig를 수정합니다.
 @Configuration
@@ -58,4 +63,6 @@ public class SecurityConfig {
 
     // GEMINI: 자체 로그인을 처리하지 않으므로 AuthenticationManager, DaoAuthenticationProvider, OAuth 관련 빈은 모두 제거합니다.
     // GEMINI: 이러한 설정은 인증 서버(AuthBell)에만 필요합니다.
+
+
 }
