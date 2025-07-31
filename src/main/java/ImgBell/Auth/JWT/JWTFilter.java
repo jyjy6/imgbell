@@ -136,12 +136,6 @@ public class JWTFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                } else {
-//                    response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
-//                    response.setHeader("Access-Control-Allow-Credentials", "true");
-                    // 401 응답 설정
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
-                    return; // 필터 체인 종료
                 }
             } catch (Exception e) {
                 System.out.println("JWT 검증 실패: " + e.getMessage());
@@ -149,8 +143,6 @@ public class JWTFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
                 return; // 필터 체인 종료
             }
-        } else {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "토큰없음");
         }
 
         filterChain.doFilter(request, response);
