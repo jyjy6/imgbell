@@ -14,6 +14,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,6 +23,7 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -58,7 +60,7 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
 
-        
+
         if (pathMatcher.match("/api/oauth/google/call-back", request.getRequestURI())) {
             System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");
             filterChain.doFilter(request, response);
@@ -70,7 +72,7 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
         if (pathMatcher.match("/api/logout", request.getRequestURI())) {
-            System.out.println("로그아웃 요청이므로 JWT 필터를 건너뜁니다.");
+            System.out.println("로그인 요청이므로 JWT 필터를 건너뜁니다.");
             filterChain.doFilter(request, response);
             return;
         }
@@ -91,13 +93,10 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
 
-// authHeader는 이제 의미가없음 AccessToken이 쿠키방식으로 바뀌어서
-//        String authHeader = request.getHeader("Authorization");
-//        System.out.println("Auth Header: " + authHeader);
-
         // 요청에서 JWT 추출
 
         String jwt = getJwtFromRequest(request);
+        String refreshJwt = getRefreshJwtFromRequest(request);
 
         System.out.println("현재jwt"+jwt);
 
@@ -106,7 +105,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 // JWT 유효성 검증
                 System.out.println("만료됐는지 확인1");
                 if (!jwtUtil.isTokenExpired(jwt)) {
-                    // GEMINI: extractToken -> extractClaims 로 변경
+                    // JWT에서 Claims 추출
                     Claims claims = jwtUtil.extractClaims(jwt);
                     String userInfoJson = claims.get("userInfo", String.class);
 
@@ -136,6 +135,12 @@ public class JWTFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
+                } else {
+                    System.out.println("토큰 만료됐음ㅇㅇ");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json; charset=UTF-8");
+                    response.getWriter().write("{\"message\": \"Access token expired\"}");
+                    return;
                 }
             } catch (Exception e) {
                 System.out.println("JWT 검증 실패: " + e.getMessage());
@@ -143,6 +148,8 @@ public class JWTFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
                 return; // 필터 체인 종료
             }
+        } else if (refreshJwt != null){
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "accessToken Is Null Refresh");
         }
 
         filterChain.doFilter(request, response);
@@ -164,6 +171,18 @@ public class JWTFilter extends OncePerRequestFilter {
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7); // "Bearer " 제거
+        }
+        return null;
+    }
+
+    private String getRefreshJwtFromRequest(HttpServletRequest request) {
+        // 1. 쿠키에서 refreshToken 찾기
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
         }
         return null;
     }

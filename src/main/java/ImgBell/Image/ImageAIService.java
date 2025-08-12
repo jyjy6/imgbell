@@ -40,6 +40,8 @@ public class ImageAIService {
     @Value("${google.gemini.api.key}")
     private String geminiApiKey;
 
+    private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+
     public ImageAIService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.webClient = WebClient.builder()
@@ -151,14 +153,16 @@ public class ImageAIService {
             Map<String, Object> generationConfig = new HashMap<>();
             generationConfig.put("temperature", 0.4); // 창의성과 일관성의 균형
             generationConfig.put("candidateCount", 1);
-            generationConfig.put("maxOutputTokens", 300); // 더 상세한 분석을 위해 증가
+            generationConfig.put("maxOutputTokens", 5000); // 더 상세한 분석을 위해 증가
             request.setGenerationConfig(generationConfig);
+
 
             // API 호출
             log.info("Gemini API 요청 전송");
             
             Mono<String> responseMono = webClient.post()
-                    .uri("/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey)
+                    // .uri("/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey)
+                    .uri(GEMINI_API_URL + "?key=" + geminiApiKey)
                     .bodyValue(request)
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError(), 
@@ -278,14 +282,14 @@ public class ImageAIService {
             Map<String, Object> generationConfig = new HashMap<>();
             generationConfig.put("temperature", 0.4); // 창의성과 일관성의 균형
             generationConfig.put("candidateCount", 1);
-            generationConfig.put("maxOutputTokens", 500); // 더 상세한 분석을 위해 증가
+            generationConfig.put("maxOutputTokens", 50000); // 더 상세한 분석을 위해 증가
             request.setGenerationConfig(generationConfig);
 
             // API 호출
             log.info("Gemini API 캐릭 요청 전송");
 
             Mono<String> responseMono = webClient.post()
-                    .uri("/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey)
+                    .uri(GEMINI_API_URL + "?key=" + geminiApiKey)
                     .bodyValue(request)
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError(),
@@ -326,9 +330,42 @@ public class ImageAIService {
                 return createErrorResult("Gemini AI 응답이 비어있습니다.");
             }
 
-            Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+            Map<String, Object> firstCandidate = candidates.get(0);
+            Map<String, Object> content = (Map<String, Object>) firstCandidate.get("content");
+
+            if (content == null) {
+                String finishReason = (String) firstCandidate.get("finishReason");
+                Map<String, Object> promptFeedback = (Map<String, Object>) response.get("promptFeedback");
+                log.warn("Gemini 응답에 content가 없습니다. finishReason={}, promptFeedback={}", finishReason, promptFeedback);
+                return createErrorResult("Gemini 응답에 content가 없습니다. finishReason=" + finishReason);
+            }
+
             List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-            String text = (String) parts.get(0).get("text");
+            if (parts == null || parts.isEmpty()) {
+                String finishReason = (String) firstCandidate.get("finishReason");
+                Map<String, Object> promptFeedback = (Map<String, Object>) response.get("promptFeedback");
+                log.warn("Gemini 응답에 parts가 없습니다. finishReason={}, promptFeedback={}", finishReason, promptFeedback);
+                return createErrorResult("Gemini 응답에 parts가 없습니다. finishReason=" + finishReason);
+            }
+
+            String text = null;
+            Object firstText = parts.get(0).get("text");
+            if (firstText != null) {
+                text = firstText.toString();
+            } else {
+                for (Map<String, Object> part : parts) {
+                    Object t = part.get("text");
+                    if (t != null) {
+                        text = t.toString();
+                        break;
+                    }
+                }
+            }
+
+            if (text == null || text.isBlank()) {
+                log.warn("Gemini 응답에 텍스트가 없습니다. rawResponse={}", responseBody);
+                return createErrorResult("Gemini 응답에 텍스트가 없습니다.");
+            }
             
             log.info("Gemini 응답 텍스트: {}", text);
             
@@ -374,9 +411,42 @@ public class ImageAIService {
                 return createCharErrorResult("Gemini AI 응답이 비어있습니다.");
             }
 
-            Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+            Map<String, Object> firstCandidate = candidates.get(0);
+            Map<String, Object> content = (Map<String, Object>) firstCandidate.get("content");
+
+            if (content == null) {
+                String finishReason = (String) firstCandidate.get("finishReason");
+                Map<String, Object> promptFeedback = (Map<String, Object>) response.get("promptFeedback");
+                log.warn("Gemini 캐릭 응답에 content가 없습니다. finishReason={}, promptFeedback={}", finishReason, promptFeedback);
+                return createCharErrorResult("Gemini 응답에 content가 없습니다. finishReason=" + finishReason);
+            }
+
             List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-            String text = (String) parts.get(0).get("text");
+            if (parts == null || parts.isEmpty()) {
+                String finishReason = (String) firstCandidate.get("finishReason");
+                Map<String, Object> promptFeedback = (Map<String, Object>) response.get("promptFeedback");
+                log.warn("Gemini 캐릭 응답에 parts가 없습니다. finishReason={}, promptFeedback={}", finishReason, promptFeedback);
+                return createCharErrorResult("Gemini 응답에 parts가 없습니다. finishReason=" + finishReason);
+            }
+
+            String text = null;
+            Object firstText = parts.get(0).get("text");
+            if (firstText != null) {
+                text = firstText.toString();
+            } else {
+                for (Map<String, Object> part : parts) {
+                    Object t = part.get("text");
+                    if (t != null) {
+                        text = t.toString();
+                        break;
+                    }
+                }
+            }
+
+            if (text == null || text.isBlank()) {
+                log.warn("Gemini 캐릭 응답에 텍스트가 없습니다. rawResponse={}", responseBody);
+                return createCharErrorResult("Gemini 응답에 텍스트가 없습니다.");
+            }
 
             log.info("Gemini 응답 텍스트: {}", text);
 
