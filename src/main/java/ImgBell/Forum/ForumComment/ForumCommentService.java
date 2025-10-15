@@ -23,10 +23,6 @@ public class ForumCommentService {
         String authorUsername = ((CustomUserDetails)auth.getPrincipal()).getUsername();
         String authorDisplayName = ((CustomUserDetails)auth.getPrincipal()).getDisplayName();
 
-        System.out.println("dto");
-        System.out.println(dto);
-        System.out.println(dto.getForumId());
-
         ForumComment comment = new ForumComment();
         comment.setContent(dto.getContent());
         comment.setAuthorDisplayName(authorDisplayName);

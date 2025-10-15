@@ -179,8 +179,7 @@ public class ImageController {
         @PathVariable Long id, 
         
         @Parameter(description = "조회수 증가 여부", example = "true")
-        @RequestParam(defaultValue = "false") Boolean increaseView, 
-        
+        @RequestParam(defaultValue = "false") Boolean increaseView,
         Authentication auth
     ) {
         return ResponseEntity.ok(imageService.getImageDetail(id, increaseView, auth));

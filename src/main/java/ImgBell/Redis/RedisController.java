@@ -8,7 +8,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/redis")
-@CrossOrigin(origins = "http://localhost:5173") // Vue 개발서버 주소
+//@CrossOrigin(origins = "http://localhost:5173") // Vue 개발서버 주소
 public class RedisController {
 
     @Autowired

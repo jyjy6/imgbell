@@ -175,15 +175,24 @@ public class RedisService {
      * @return 요청 허용 여부
      */
     public boolean isAllowedFixedWindow(String key, long windowSizeInSeconds, int maxRequests) {
+        // 1. 현재 시간대를 기준으로 윈도우(시간 구간)를 계산
         long currentWindow = System.currentTimeMillis() / 1000 / windowSizeInSeconds;
         String windowKey = "rate_limit:fixed:" + key + ":" + currentWindow;
-        
+
+        // 2. Redis의 INCR 명령어를 실행하여 값을 1 증가시키고, 그 결과를 받음
+        /*
+            Redis의 `INCR` 명령어(코드에서는 `increment()`)는 키가 없을 경우, 자동으로 키를 생성하고 값을 0으로 초기화한 뒤 1을 더해 최종적으로 1을
+            저장하고 반환합니다.
+         */
         Long currentCount = redisTemplate.opsForValue().increment(windowKey);
-        
+
+        // 3. 만약 카운트가 1이라면 (최초의 요청이라면)
         if (currentCount == 1) {
+            // 4. 이 키에 만료시간(TTL)을 설정
             redisTemplate.expire(windowKey, windowSizeInSeconds, TimeUnit.SECONDS);
         }
-        
+
+        // 5. 현재 카운트가 최대 요청 수보다 작거나 같은지 확인하여 결과 반환
         return currentCount <= maxRequests;
     }
     

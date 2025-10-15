@@ -24,7 +24,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
-        
+
+        /**
+         * HandlerMethod는 "실행될 컨트롤러 메서드에 대한 모든 정보가 담긴 객체"
+         * API 요청처럼 컨트롤러의 특정 메서드를 실행해야 할 때: handler는 HandlerMethod 타입의 객체입니다.
+         * */
+
         HandlerMethod handlerMethod = (HandlerMethod) handler;
         RateLimit rateLimit = handlerMethod.getMethodAnnotation(RateLimit.class);
         

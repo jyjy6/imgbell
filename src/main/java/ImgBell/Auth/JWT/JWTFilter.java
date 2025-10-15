@@ -24,11 +24,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 
 @RequiredArgsConstructor
@@ -42,6 +38,25 @@ public class JWTFilter extends OncePerRequestFilter {
 //    private final String allowedOrigins; // Spring Security->SecurityConfig 생성자를 통해 주입
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+
+        // 제외할 경로들
+        List<String> excludePaths = Arrays.asList(
+                "/actuator/**",
+                "/api/v1/oauth/google/call-back",
+                "/api/v1/login/jwt",
+                "/api/v1/auth/**",
+                "/api/v1/auth/csrf",
+                REFRESH_TOKEN_ENDPOINT,
+                "/api/v1/oauth/user/me"
+        );
+        // 하나라도 매칭되면 true 리턴 -> 필터 건너뜀
+        return excludePaths.stream()
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -53,45 +68,6 @@ public class JWTFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 🔥 모니터링 엔드포인트는 JWT 검증 제외 (Prometheus + Grafana)
-        if (pathMatcher.match("/actuator/**", request.getRequestURI())) {
-            System.out.println("Actuator 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-
-        if (pathMatcher.match("/api/oauth/google/call-back", request.getRequestURI())) {
-            System.out.println("OAuth 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (pathMatcher.match("/api/login/jwt", request.getRequestURI())) {
-            System.out.println("로그인 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (pathMatcher.match("/api/logout", request.getRequestURI())) {
-            System.out.println("로그인 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (pathMatcher.match("/api/auth/csrf", request.getRequestURI())) {
-            System.out.println("CSRF 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-        // refresh-token 요청인 경우 필터 건너뛰기
-        if (pathMatcher.match(REFRESH_TOKEN_ENDPOINT, request.getRequestURI())) {
-            System.out.println("refresh-token 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (pathMatcher.match("/api/oauth/user/me", request.getRequestURI())) {
-            System.out.println("oauth/user 요청이므로 JWT 필터를 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         // 요청에서 JWT 추출
 

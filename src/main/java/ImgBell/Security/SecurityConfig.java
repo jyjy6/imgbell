@@ -33,7 +33,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // GEMINI: CSRF 보호 비활성화 (JWT 사용 시 일반적으로 불필요)
+                // GEMINI: CSRF 보호 비활성화 (JWT 사용 시 일반적으로 불필요->쿠키로 accessToken저장할때는 매우필요)
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 // GEMINI: 세션을 사용하지 않으므로 STATELESS로 설정

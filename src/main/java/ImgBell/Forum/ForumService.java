@@ -37,14 +37,13 @@ public class ForumService {
         String displayName = ((CustomUserDetails) auth.getPrincipal()).getDisplayName();
 
 
-        Forum forum = new Forum();
-        forum.setTitle(forumDto.getTitle());
-        forum.setContent(forumDto.getContent());
-        Forum.PostType postType = forumDto.getType() != null ?
-                forumDto.getType() : Forum.PostType.NORMAL;
-        forum.setType(postType);
-        forum.setAuthorDisplayName(displayName);
-        forum.setAuthorUsername(username);
+        Forum forum = Forum.builder()
+                .title(forumDto.getTitle())
+                .content(forumDto.getContent())
+                .type(forumDto.getType() != null ? forumDto.getType() : Forum.PostType.NORMAL)
+                .authorDisplayName(displayName)
+                .authorUsername(username)
+                .build();
         Forum savedForum = forumRepository.save(forum);
         
         // 🔥 Prometheus 메트릭: 포럼 포스트 카운터 증가
@@ -200,6 +199,7 @@ public class ForumService {
             return Long.valueOf(cachedCount.toString());
         }
         
+
         // Redis에 없으면 DB에서 가져와서 캐시 설정
         Forum forum = forumRepository.findById(forumId).orElse(null);
         if (forum != null) {
